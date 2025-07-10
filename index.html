@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNR SoftTech Solutions - Bill Generator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i class="fas fa-laptop-code"></i>
+            </div>
+            <div class="logo-text">
+                <h1>MNR SOFTTECH SOLUTIONS</h1>
+                <p>Computer Software & Hardware Services</p>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="form-container">
+                <h2>Generate Invoice</h2>
+                <form id="invoiceForm">
+                    <div class="form-group">
+                        <label for="invoiceNumber">Invoice Number</label>
+                        <input type="text" id="invoiceNumber" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="invoiceDate">Date</label>
+                        <input type="date" id="invoiceDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customerName">Customer Name</label>
+                        <input type="text" id="customerName" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customerContact">Contact Number</label>
+                        <input type="text" id="customerContact">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customerAddress">Address</label>
+                        <textarea id="customerAddress" rows="3"></textarea>
+                    </div>
+                    
+                    <h3>Services/Products</h3>
+                    <div id="itemsContainer">
+                        <div class="item-row">
+                            <input type="text" class="item-desc" placeholder="Description" required>
+                            <input type="number" class="item-qty" placeholder="Qty" min="1" value="1" required>
+                            <input type="number" class="item-price" placeholder="Price" min="0" step="0.01" required>
+                            <button type="button" class="remove-item"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="addItem" class="btn-secondary">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                    
+                    <div class="form-group">
+                        <label for="taxRate">Tax Rate (%)</label>
+                        <input type="number" id="taxRate" min="0" max="100" value="18" step="0.01">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" rows="3" placeholder="Thank you for your business!"></textarea>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button type="button" id="previewBtn" class="btn-primary">
+                            <i class="fas fa-eye"></i> Preview Invoice
+                        </button>
+                        <button type="button" id="downloadPdfBtn" class="btn-primary">
+                            <i class="fas fa-file-pdf"></i> Download PDF
+                        </button>
+                        <button type="button" id="downloadJpgBtn" class="btn-primary">
+                            <i class="fas fa-file-image"></i> Download JPEG
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="preview-container">
+                <h2>Invoice Preview</h2>
+                <div id="invoicePreview">
+                    <div class="preview-placeholder">
+                        <i class="fas fa-receipt"></i>
+                        <p>Your invoice will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; <span id="currentYear"></span> MNR SoftTech Solutions. All rights reserved.</p>
+        <p>Contact: mnrsofttech@example.com | Phone: +91 XXXXX XXXXX</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
