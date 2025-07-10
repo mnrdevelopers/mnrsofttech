@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Download JPEG button
     document.getElementById('downloadJpgBtn').addEventListener('click', downloadAsJPEG);
     
+    // Print button
+    document.getElementById('printBtn').addEventListener('click', printInvoice);
+    
     // Auto-generate preview when inputs change
     document.getElementById('invoiceForm').addEventListener('input', function() {
         // Throttle the preview generation to avoid performance issues
@@ -119,8 +122,8 @@ function generateInvoicePreview() {
                 <div class="company-name">MNR SoftTech Solutions</div>
                 <div class="company-details">
                     Computer Software & Hardware Services<br>
-                    Contact: mnrdeveloper11@gmail.com<br>
-                    Phone: +91 74160 06394
+                    Contact: mnrsofttech@example.com<br>
+                    Phone: +91 XXXXX XXXXX
                 </div>
             </div>
             
@@ -213,4 +216,36 @@ function downloadAsJPEG() {
         link.href = canvas.toDataURL('image/jpeg', 0.9);
         link.click();
     });
+}
+
+function printInvoice() {
+    generateInvoicePreview();
+    
+    // Wait for the preview to generate
+    setTimeout(() => {
+        const printWindow = window.open('', '', 'width=800,height=600');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Print Invoice</title>
+                <style>
+                    ${document.querySelector('style').innerHTML}
+                </style>
+            </head>
+            <body>
+                ${document.getElementById('invoicePreview').innerHTML}
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                            window.close();
+                        }, 200);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }, 100);
 }
