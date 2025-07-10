@@ -119,8 +119,8 @@ function generateInvoicePreview() {
                 <div class="company-name">MNR SoftTech Solutions</div>
                 <div class="company-details">
                     Computer Software & Hardware Services<br>
-                    Contact: mnrsofttech@example.com<br>
-                    Phone: +91 XXXXX XXXXX
+                    Contact: mnrdeveloper11@gmail.com<br>
+                    Phone: +91 74160 06394
                 </div>
             </div>
             
