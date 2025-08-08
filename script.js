@@ -148,9 +148,9 @@ function generateInvoicePreview() {
             <div class="invoice-company">
                 <div class="company-name">MNR SoftTech Solutions</div>
                 <div class="company-details">
-                    Innovating IT Solutions<br>
+                    Computer Software & Hardware Services<br>
                     Contact: Maniteja (mnrdeveloper11@gmail.com)<br>
-                    Phone: +91 7416006394
+                    Phone: +91 7416006394 (Whatsapp only)
                 </div>
             </div>
             
