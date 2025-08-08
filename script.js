@@ -190,17 +190,9 @@ function generateInvoicePreview() {
                 </tbody>
             </table>
             
-            <div class="invoice-totals">
-                <div class="invoice-totals-row">
-                    <span class="invoice-totals-label">Subtotal:</span>
-                    <span class="invoice-totals-value">₹${subtotal.toFixed(2)}</span>
-                </div>
-                <div class="invoice-totals-row">
-                    <span class="invoice-totals-label">Tax (${taxRate}%):</span>
-                    <span class="invoice-totals-value">₹${taxAmount.toFixed(2)}</span>
-                </div>
+             <div class="invoice-totals">
                 <div class="invoice-totals-row invoice-grand-total">
-                    <span class="invoice-totals-label">Total:</span>
+                    <span class="invoice-totals-label">Total Amount:</span>
                     <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
                 </div>
             </div>
