@@ -97,7 +97,6 @@ function generateInvoicePreview() {
     const customerName = document.getElementById('customerName').value;
     const customerContact = document.getElementById('customerContact').value;
     const customerAddress = document.getElementById('customerAddress').value;
-    const taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
     const notes = document.getElementById('notes').value;
     
     // Get all items
@@ -126,8 +125,7 @@ function generateInvoicePreview() {
     });
     
     // Calculate tax and total
-    const taxAmount = subtotal * (taxRate / 100);
-    const grandTotal = subtotal + taxAmount;
+    const grandTotal = subtotal
     
     // Format date
     const formattedDate = invoiceDate ? new Date(invoiceDate).toLocaleDateString('en-IN', {
