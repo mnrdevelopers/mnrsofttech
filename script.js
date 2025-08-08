@@ -81,10 +81,9 @@ function generateInvoicePreview() {
     const customerName = document.getElementById('customerName').value;
     const customerContact = document.getElementById('customerContact').value;
     const customerAddress = document.getElementById('customerAddress').value;
-    const taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
-    const notes = document.getElementById('notes').value;
     const warranty = document.getElementById('warranty').value;
-const customWarranty = document.getElementById('customWarranty').value;
+    const customWarranty = document.getElementById('customWarranty').value;
+    const notes = document.getElementById('notes').value;
     
     // Get all items
     const itemRows = document.querySelectorAll('.item-row');
@@ -108,9 +107,8 @@ const customWarranty = document.getElementById('customWarranty').value;
         }
     });
     
-    // Calculate tax and total
-    const taxAmount = subtotal * (taxRate / 100);
-    const grandTotal = subtotal + taxAmount;
+    // Calculate total
+    const grandTotal = subtotal;
     
     // Format date
     const formattedDate = invoiceDate ? new Date(invoiceDate).toLocaleDateString('en-IN', {
@@ -133,9 +131,9 @@ const customWarranty = document.getElementById('customWarranty').value;
             <div class="invoice-company">
                 <div class="company-name">MNR SoftTech Solutions</div>
                 <div class="company-details">
-                    Computer Software & Hardware Services<br>
-                    Contact: mnrdeveloper11@gmail.com<br>
-                    Phone: +91 74160 06394
+                    Innovating IT Solutions<br>
+                    Contact: Maniteja (mnrdeveloper11@gmail.com)<br>
+                    Phone: +91 7416006394
                 </div>
             </div>
             
@@ -170,33 +168,25 @@ const customWarranty = document.getElementById('customWarranty').value;
             </table>
             
             <div class="invoice-totals">
-                <div class="invoice-totals-row">
-                    <span class="invoice-totals-label">Subtotal:</span>
-                    <span class="invoice-totals-value">₹${subtotal.toFixed(2)}</span>
-                </div>
-                <div class="invoice-totals-row">
-                    <span class="invoice-totals-label">Tax (${taxRate}%):</span>
-                    <span class="invoice-totals-value">₹${taxAmount.toFixed(2)}</span>
-                </div>
                 <div class="invoice-totals-row invoice-grand-total">
-                    <span class="invoice-totals-label">Total:</span>
+                    <span class="invoice-totals-label">Total Amount:</span>
                     <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
                 </div>
             </div>
-
+            
             ${warranty !== 'no-warranty' ? `
-    <div class="warranty-section">
-        <h3>Warranty Information</h3>
-        <div class="warranty-details">
-            ${warranty === 'custom' ? customWarranty : 
-              warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
-        </div>
-        <div class="warranty-disclaimer">
-            Warranty covers manufacturing defects only. Does not cover physical damage, 
-            liquid damage, or unauthorized repairs. Original invoice required for warranty claims.
-        </div>
-    </div>
-` : ''}
+                <div class="warranty-section">
+                    <h3>Warranty Information</h3>
+                    <div class="warranty-details">
+                        ${warranty === 'custom' ? customWarranty : 
+                          warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
+                    </div>
+                    <div class="warranty-disclaimer">
+                        Warranty covers manufacturing defects only. Does not cover physical damage, 
+                        liquid damage, or unauthorized repairs. Original invoice required for warranty claims.
+                    </div>
+                </div>
+            ` : ''}
             
             ${notes ? `
                 <div class="invoice-notes">
