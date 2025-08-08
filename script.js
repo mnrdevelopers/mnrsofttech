@@ -23,6 +23,16 @@ document.addEventListener('DOMContentLoaded', function() {
             generateInvoicePreview();
         }
     });
+
+    // Add this to your DOMContentLoaded event listener
+document.getElementById('warranty').addEventListener('change', function() {
+    const customWarrantyField = document.getElementById('customWarranty');
+    if (this.value === 'custom') {
+        customWarrantyField.style.display = 'block';
+    } else {
+        customWarrantyField.style.display = 'none';
+    }
+});
     
     // Preview button
     document.getElementById('previewBtn').addEventListener('click', generateInvoicePreview);
@@ -73,6 +83,8 @@ function generateInvoicePreview() {
     const customerAddress = document.getElementById('customerAddress').value;
     const taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
     const notes = document.getElementById('notes').value;
+    const warranty = document.getElementById('warranty').value;
+const customWarranty = document.getElementById('customWarranty').value;
     
     // Get all items
     const itemRows = document.querySelectorAll('.item-row');
@@ -171,6 +183,20 @@ function generateInvoicePreview() {
                     <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
                 </div>
             </div>
+
+            ${warranty !== 'no-warranty' ? `
+    <div class="warranty-section">
+        <h3>Warranty Information</h3>
+        <div class="warranty-details">
+            ${warranty === 'custom' ? customWarranty : 
+              warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
+        </div>
+        <div class="warranty-disclaimer">
+            Warranty covers manufacturing defects only. Does not cover physical damage, 
+            liquid damage, or unauthorized repairs. Original invoice required for warranty claims.
+        </div>
+    </div>
+` : ''}
             
             ${notes ? `
                 <div class="invoice-notes">
