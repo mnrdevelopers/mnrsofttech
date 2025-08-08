@@ -73,6 +73,21 @@
                         <label for="notes">Notes</label>
                         <textarea id="notes" rows="3" placeholder="Thank you for your business!"></textarea>
                     </div>
+
+                    <div class="form-group">
+    <label for="warranty">Warranty Information</label>
+    <select id="warranty" class="warranty-select">
+        <option value="no-warranty">No Warranty</option>
+        <option value="7-days">7 Days Warranty</option>
+        <option value="15-days">15 Days Warranty</option>
+        <option value="1-month">1 Month Warranty</option>
+        <option value="3-months">3 Months Warranty</option>
+        <option value="6-months">6 Months Warranty</option>
+        <option value="1-year">1 Year Warranty</option>
+        <option value="custom">Custom Warranty</option>
+    </select>
+    <input type="text" id="customWarranty" class="custom-warranty" placeholder="Enter custom warranty details" style="display: none; margin-top: 8px;">
+</div>
                     
                     <div class="button-group">
                         <button type="button" id="previewBtn" class="btn-primary">
