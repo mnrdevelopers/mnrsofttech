@@ -222,15 +222,22 @@ async function loadInvoicesFromFirebase() {
         let invoicesHTML = '';
         snapshot.forEach(doc => {
             const invoice = doc.data();
+            
+            // Robust date formatting with multiple fallbacks
+            let displayDate = this.formatInvoiceDate(invoice);
+            
+            // Safe total amount
+            const totalAmount = invoice.grandTotal || invoice.subtotal || 0;
+            
             invoicesHTML += `
                 <div class="invoice-item" data-id="${doc.id}">
                     <div class="invoice-item-header">
                         <strong>${invoice.invoiceNumber || 'No Number'}</strong>
-                        <span class="invoice-date">${new Date(invoice.createdAt).toLocaleDateString()}</span>
+                        <span class="invoice-date">${displayDate}</span>
                     </div>
                     <div class="invoice-item-body">
                         <div>Customer: ${invoice.customerName || 'No Name'}</div>
-                        <div>Total: ₹${(invoice.grandTotal || 0).toFixed(2)}</div>
+                        <div>Total: ₹${totalAmount.toFixed(2)}</div>
                         <div>Items: ${invoice.items ? invoice.items.length : 0}</div>
                     </div>
                     <div class="invoice-item-actions">
@@ -252,6 +259,36 @@ async function loadInvoicesFromFirebase() {
         console.error('Error loading invoices:', error);
         alert('Error loading invoices: ' + error.message);
     }
+}
+
+// Add this helper function for robust date formatting
+function formatInvoiceDate(invoice) {
+    // Try multiple date sources in order of preference
+    const dateSources = [
+        invoice.createdAt,      // Firebase timestamp
+        invoice.invoiceDate,    // Original invoice date
+        new Date().toISOString() // Current date as fallback
+    ];
+    
+    for (const dateSource of dateSources) {
+        if (!dateSource) continue;
+        
+        try {
+            const date = new Date(dateSource);
+            if (!isNaN(date.getTime())) {
+                return date.toLocaleDateString('en-IN', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            }
+        } catch (error) {
+            console.warn('Date formatting failed for:', dateSource);
+            continue;
+        }
+    }
+    
+    return 'Date not available';
 }
 
 async function loadInvoice(invoiceId) {
@@ -343,12 +380,23 @@ function generateInvoicePreview() {
     const invoiceData = collectInvoiceData();
     const { invoiceNumber, invoiceDate, customerName, customerContact, customerAddress, notes, items, grandTotal } = invoiceData;
     
-    // Format date
-    const formattedDate = invoiceDate ? new Date(invoiceDate).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    }) : '';
+    // Robust date formatting for preview
+    let formattedDate = 'Date not set';
+    try {
+        if (invoiceDate) {
+            const date = new Date(invoiceDate);
+            if (!isNaN(date.getTime())) {
+                formattedDate = date.toLocaleDateString('en-IN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+        }
+    } catch (error) {
+        console.warn('Preview date formatting error:', error);
+        formattedDate = 'Invalid Date';
+    }
     
     // Generate HTML for the invoice
     const invoiceHTML = `
@@ -440,7 +488,7 @@ function generateInvoicePreview() {
         </div>
     `;
     
-    // Update the preview
+   // Update the preview
     const previewContainer = document.getElementById('invoicePreview');
     if (previewContainer) {
         previewContainer.innerHTML = invoiceHTML;
