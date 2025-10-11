@@ -1,3 +1,7 @@
+let currentPage = 1;
+const invoicesPerPage = 10;
+let allInvoices = [];
+
 // Firebase configuration - REPLACE WITH YOUR ACTUAL CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
@@ -73,6 +77,21 @@ function setupEventListeners() {
     // Filter controls
     document.getElementById('billingCycleFilter').addEventListener('change', loadInvoices);
     document.getElementById('monthFilter').addEventListener('change', loadInvoices);
+
+  // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabId = this.getAttribute('data-tab');
+            switchTab(tabId);
+        });
+    });
+    
+    // Search functionality
+    document.getElementById('searchInvoice').addEventListener('input', function() {
+        currentPage = 1;
+        loadInvoices();
+    });
+}
     
     // Remove item button event delegation
     document.getElementById('itemsContainer').addEventListener('click', function(e) {
@@ -418,77 +437,377 @@ function clearForm() {
 async function loadInvoices() {
     if (!currentUser) return;
     
-    const invoicesList = document.getElementById('invoicesList');
-    invoicesList.innerHTML = '<p>Loading invoices...</p>';
+    const invoicesTableBody = document.getElementById('invoicesTableBody');
+    invoicesTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">Loading invoices...</td></tr>';
     
     const billingCycleFilter = document.getElementById('billingCycleFilter').value;
     const monthFilter = document.getElementById('monthFilter').value;
+    const searchQuery = document.getElementById('searchInvoice').value.toLowerCase();
     
     try {
-        let query = db.collection('invoices');
-        
-        // Build query based on filters - these will use the composite indexes
-        if (billingCycleFilter !== 'all' && monthFilter !== 'all') {
-            // Filter by both billingCycle and month
-            query = query
-                .where('userId', '==', currentUser.uid)
-                .where('billingCycle', '==', billingCycleFilter)
-                .where('month', '==', monthFilter)
-                .orderBy('createdAt', 'desc');
-        } else if (billingCycleFilter !== 'all') {
-            // Filter only by billingCycle
-            query = query
-                .where('userId', '==', currentUser.uid)
-                .where('billingCycle', '==', billingCycleFilter)
-                .orderBy('createdAt', 'desc');
-        } else if (monthFilter !== 'all') {
-            // Filter only by month
-            query = query
-                .where('userId', '==', currentUser.uid)
-                .where('month', '==', monthFilter)
-                .orderBy('createdAt', 'desc');
-        } else {
-            // No filters - just get all user invoices
-            query = query
-                .where('userId', '==', currentUser.uid)
-                .orderBy('createdAt', 'desc');
-        }
+        let query = db.collection('invoices')
+            .where('userId', '==', currentUser.uid)
+            .orderBy('createdAt', 'desc');
         
         const snapshot = await query.get();
         
         if (snapshot.empty) {
-            invoicesList.innerHTML = '<p>No invoices found. Create your first invoice!</p>';
+            invoicesTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">No invoices found. Create your first invoice!</td></tr>';
+            document.getElementById('paginationControls').innerHTML = '';
             return;
         }
         
-        invoicesList.innerHTML = '';
+        // Process and filter invoices
+        allInvoices = [];
         snapshot.forEach(doc => {
             const invoice = { 
                 id: doc.id, 
                 ...doc.data(),
-                // Convert Firestore timestamp to JavaScript Date
                 createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
             };
-            const invoiceElement = createInvoiceCard(invoice);
-            invoicesList.appendChild(invoiceElement);
+            
+            // Apply filters
+            let includeInvoice = true;
+            
+            if (billingCycleFilter !== 'all' && invoice.billingCycle !== billingCycleFilter) {
+                includeInvoice = false;
+            }
+            
+            if (monthFilter !== 'all') {
+                const invoiceMonth = invoice.invoiceDate ? invoice.invoiceDate.substring(0, 7) : '';
+                if (invoiceMonth !== monthFilter) {
+                    includeInvoice = false;
+                }
+            }
+            
+            if (searchQuery) {
+                const searchFields = [
+                    invoice.invoiceNumber || '',
+                    invoice.customerName || '',
+                    invoice.customerContact || ''
+                ].join(' ').toLowerCase();
+                
+                if (!searchFields.includes(searchQuery)) {
+                    includeInvoice = false;
+                }
+            }
+            
+            if (includeInvoice) {
+                allInvoices.push(invoice);
+            }
         });
+        
+        renderInvoicesTable();
         
     } catch (error) {
         console.error('Error loading invoices:', error);
+        invoicesTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">Error loading invoices: ' + error.message + '</td></tr>';
+    }
+}
+
+function renderInvoicesTable() {
+    const invoicesTableBody = document.getElementById('invoicesTableBody');
+    const paginationControls = document.getElementById('paginationControls');
+    
+    if (allInvoices.length === 0) {
+        invoicesTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">No invoices found matching your criteria.</td></tr>';
+        paginationControls.innerHTML = '';
+        return;
+    }
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(allInvoices.length / invoicesPerPage);
+    const startIndex = (currentPage - 1) * invoicesPerPage;
+    const endIndex = Math.min(startIndex + invoicesPerPage, allInvoices.length);
+    const currentInvoices = allInvoices.slice(startIndex, endIndex);
+    
+    // Render table rows
+    invoicesTableBody.innerHTML = currentInvoices.map(invoice => {
+        const formattedDate = invoice.invoiceDate ? 
+            new Date(invoice.invoiceDate).toLocaleDateString('en-IN') : 'No date';
         
-        // Show specific error message with index creation link
-        if (error.code === 'failed-precondition') {
-            invoicesList.innerHTML = `
-                <div class="error-message">
-                    <p><strong>Index Required:</strong> Please create the Firestore composite index.</p>
-                    <p>Error: ${error.message}</p>
-                    <p>Click the link in the browser console to create the index automatically, 
-                    or create it manually in Firebase Console under Firestore > Indexes.</p>
-                </div>
-            `;
-        } else {
-            invoicesList.innerHTML = '<p>Error loading invoices: ' + error.message + '</p>';
+        const formattedTime = invoice.createdAt ? 
+            invoice.createdAt.toLocaleTimeString('en-IN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            }) : '';
+        
+        const statusClass = invoice.status === 'paid' ? 'status-paid' : 
+                           invoice.status === 'pending' ? 'status-pending' : 'status-draft';
+        
+        const statusText = invoice.status === 'paid' ? 'Paid' : 
+                          invoice.status === 'pending' ? 'Pending' : 'Draft';
+        
+        const typeBadge = invoice.billingCycle === 'monthly' ? 
+            '<span class="badge-monthly">Monthly</span>' : 
+            '<span class="badge-daily">Daily</span>';
+        
+        return `
+            <tr>
+                <td>${invoice.invoiceNumber || '---'}</td>
+                <td>
+                    <div>${formattedDate}</div>
+                    <small style="color: #666;">${formattedTime}</small>
+                </td>
+                <td>${invoice.customerName || 'No customer'}</td>
+                <td>${typeBadge}</td>
+                <td><strong>₹${invoice.grandTotal?.toFixed(2) || '0.00'}</strong></td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn-action btn-view" onclick="viewInvoice('${invoice.id}')">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <button class="btn-action btn-edit" onclick="loadInvoiceForEdit('${invoice.id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-action btn-delete" onclick="deleteInvoice('${invoice.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Render pagination controls
+    renderPaginationControls(totalPages);
+}
+
+// Render pagination controls
+function renderPaginationControls(totalPages) {
+    const paginationControls = document.getElementById('paginationControls');
+    
+    const startItem = (currentPage - 1) * invoicesPerPage + 1;
+    const endItem = Math.min(currentPage * invoicesPerPage, allInvoices.length);
+    
+    paginationControls.innerHTML = `
+        <div class="pagination-info">
+            Showing ${startItem}-${endItem} of ${allInvoices.length} invoices
+        </div>
+        <div class="pagination-controls">
+            <button class="pagination-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            <span class="pagination-page">Page ${currentPage} of ${totalPages}</span>
+            <button class="pagination-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+}
+
+// Change page function
+function changePage(newPage) {
+    const totalPages = Math.ceil(allInvoices.length / invoicesPerPage);
+    
+    if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        renderInvoicesTable();
+    }
+}
+
+// View invoice function
+function viewInvoice(invoiceId) {
+    // Switch to invoice generator tab and load the invoice
+    switchTab('invoice-generator');
+    
+    // Find the invoice and generate preview
+    const invoice = allInvoices.find(inv => inv.id === invoiceId);
+    if (invoice) {
+        // Populate form and generate preview
+        loadInvoiceForEdit(invoiceId);
+        
+        // Scroll to preview
+        document.querySelector('.preview-container').scrollIntoView({ 
+            behavior: 'smooth' 
+        });
+    }
+}
+
+// Dashboard statistics function
+async function loadDashboardStats() {
+    if (!currentUser) return;
+    
+    try {
+        const snapshot = await db.collection('invoices')
+            .where('userId', '==', currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        if (snapshot.empty) {
+            resetDashboardStats();
+            return;
         }
+        
+        const invoices = [];
+        snapshot.forEach(doc => {
+            invoices.push({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
+            });
+        });
+        
+        calculateDashboardStats(invoices);
+        
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+        resetDashboardStats();
+    }
+}
+
+function calculateDashboardStats(invoices) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay());
+    
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    
+    // Calculate totals
+    let todayIncome = 0;
+    let yesterdayIncome = 0;
+    let weekIncome = 0;
+    let lastWeekIncome = 0;
+    let monthIncome = 0;
+    let lastMonthIncome = 0;
+    let totalIncome = 0;
+    
+    invoices.forEach(invoice => {
+        const invoiceDate = invoice.invoiceDate ? new Date(invoice.invoiceDate) : invoice.createdAt;
+        const amount = invoice.grandTotal || 0;
+        
+        totalIncome += amount;
+        
+        // Today vs Yesterday
+        if (invoiceDate >= today) {
+            todayIncome += amount;
+        } else if (invoiceDate >= yesterday && invoiceDate < today) {
+            yesterdayIncome += amount;
+        }
+        
+        // This week vs Last week
+        if (invoiceDate >= thisWeekStart) {
+            weekIncome += amount;
+        } else if (invoiceDate >= lastWeekStart && invoiceDate < thisWeekStart) {
+            lastWeekIncome += amount;
+        }
+        
+        // This month vs Last month
+        if (invoiceDate >= thisMonthStart) {
+            monthIncome += amount;
+        } else if (invoiceDate >= lastMonthStart && invoiceDate < thisMonthStart) {
+            lastMonthIncome += amount;
+        }
+    });
+    
+    // Calculate percentages
+    const todayChange = yesterdayIncome > 0 ? ((todayIncome - yesterdayIncome) / yesterdayIncome * 100) : 0;
+    const weekChange = lastWeekIncome > 0 ? ((weekIncome - lastWeekIncome) / lastWeekIncome * 100) : 0;
+    const monthChange = lastMonthIncome > 0 ? ((monthIncome - lastMonthIncome) / lastMonthIncome * 100) : 0;
+    
+    // Update UI
+    document.getElementById('todayIncome').textContent = `₹${todayIncome.toFixed(2)}`;
+    document.getElementById('weekIncome').textContent = `₹${weekIncome.toFixed(2)}`;
+    document.getElementById('monthIncome').textContent = `₹${monthIncome.toFixed(2)}`;
+    document.getElementById('totalIncome').textContent = `₹${totalIncome.toFixed(2)}`;
+    
+    updateChangeElement('todayChange', todayChange, 'yesterday');
+    updateChangeElement('weekChange', weekChange, 'last week');
+    updateChangeElement('monthChange', monthChange, 'last month');
+    
+    // Generate charts (you'll need to include Chart.js for this)
+    generateCharts(invoices);
+}
+
+function updateChangeElement(elementId, change, comparisonText) {
+    const element = document.getElementById(elementId);
+    const absChange = Math.abs(change);
+    const changeText = change >= 0 ? `+${absChange.toFixed(1)}% from ${comparisonText}` : 
+                                     `-${absChange.toFixed(1)}% from ${comparisonText}`;
+    
+    element.textContent = changeText;
+    element.className = `stat-change ${change >= 0 ? 'positive' : 'negative'}`;
+}
+
+function resetDashboardStats() {
+    document.getElementById('todayIncome').textContent = '₹0.00';
+    document.getElementById('weekIncome').textContent = '₹0.00';
+    document.getElementById('monthIncome').textContent = '₹0.00';
+    document.getElementById('totalIncome').textContent = '₹0.00';
+    
+    document.getElementById('todayChange').textContent = '+0% from yesterday';
+    document.getElementById('weekChange').textContent = '+0% from last week';
+    document.getElementById('monthChange').textContent = '+0% from last month';
+    
+    // Reset change colors
+    document.querySelectorAll('.stat-change').forEach(el => {
+        el.className = 'stat-change';
+    });
+}
+
+function generateCharts(invoices) {
+    // This is a basic implementation - you might want to use Chart.js for better charts
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        last7Days.push(date.toISOString().split('T')[0]);
+    }
+    
+    // Calculate daily income for last 7 days
+    const dailyIncome = last7Days.map(date => {
+        return invoices
+            .filter(inv => inv.invoiceDate === date)
+            .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    });
+    
+    // Calculate billing type distribution
+    const dailyTotal = invoices
+        .filter(inv => inv.billingCycle === 'daily')
+        .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    
+    const monthlyTotal = invoices
+        .filter(inv => inv.billingCycle === 'monthly')
+        .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    
+    // For now, we'll just log the data - you can integrate with Chart.js
+    console.log('Last 7 days income:', dailyIncome);
+    console.log('Billing distribution - Daily:', dailyTotal, 'Monthly:', monthlyTotal);
+    
+    // You can implement Chart.js integration here
+    // Example: new Chart(ctx, { type: 'line', data: { ... } });
+}
+
+// Update the handleAuthStateChange function to load dashboard when user logs in
+function handleAuthStateChange(user) {
+    currentUser = user;
+    
+    if (user) {
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'block';
+        document.getElementById('userEmail').textContent = user.email;
+        document.getElementById('invoiceForm').style.display = 'block';
+        document.getElementById('loginPrompt').style.display = 'none';
+        
+        // Load initial data
+        loadInvoices();
+        loadDashboardStats();
+        hideLoginModal();
+    } else {
+        document.getElementById('loginBtn').style.display = 'block';
+        document.getElementById('logoutBtn').style.display = 'none';
+        document.getElementById('userEmail').textContent = '';
+        document.getElementById('invoiceForm').style.display = 'none';
+        document.getElementById('loginPrompt').style.display = 'block';
     }
 }
 
@@ -870,4 +1189,30 @@ function printInvoice() {
         `);
         printWindow.document.close();
     }, 100);
+}
+
+// Tab switching function
+function switchTab(tabId) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    document.getElementById(tabId).classList.add('active');
+    
+    // Add active class to clicked tab button
+    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+    
+    // Load data for specific tabs
+    if (tabId === 'dashboard') {
+        loadDashboardStats();
+    } else if (tabId === 'invoices-history') {
+        loadInvoices();
+    }
 }
