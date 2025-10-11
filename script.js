@@ -198,15 +198,17 @@ async function saveInvoiceToFirebase() {
             return;
         }
         
-        // Ensure dates are stored properly
+        // Ensure dates are stored properly and consistently
         const invoiceToSave = {
             ...invoiceData,
+            // Store invoiceDate as YYYY-MM-DD format for consistency
             invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
-            createdAt: new Date().toISOString(),
+            // Store timestamps as ISO strings
+            createdAt: invoiceData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
-        console.log('Saving invoice:', invoiceToSave);
+        console.log('Saving invoice with date:', invoiceToSave.invoiceDate);
         
         // Save to Firestore
         await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
@@ -280,40 +282,27 @@ async function loadInvoicesFromFirebase() {
 }
 
 // Enhanced date formatting function
+// Enhanced date formatting function for display in the list
 function formatInvoiceDateForDisplay(invoice) {
     console.log('Formatting date for invoice:', invoice); // Debug log
     
-    // Try multiple date sources in order of preference
-    const dateSources = [
-        invoice.createdAt,      // Firebase timestamp
-        invoice.updatedAt,      // Update timestamp
-        invoice.invoiceDate,    // Original invoice date
-        new Date().toISOString() // Current date as fallback
-    ];
-    
-    for (const dateSource of dateSources) {
-        if (!dateSource) continue;
-        
-        console.log('Trying date source:', dateSource); // Debug log
-        
+    // Priority 1: Use the original invoiceDate for display
+    if (invoice.invoiceDate) {
         try {
             let date;
             
             // Handle Firebase Timestamp objects
-            if (dateSource.toDate) {
-                date = dateSource.toDate();
+            if (invoice.invoiceDate.toDate) {
+                date = invoice.invoiceDate.toDate();
             } 
-            // Handle string dates
-            else if (typeof dateSource === 'string') {
-                date = new Date(dateSource);
-            }
-            // Handle number timestamps
-            else if (typeof dateSource === 'number') {
-                date = new Date(dateSource);
-            }
-            // Handle Date objects
-            else if (dateSource instanceof Date) {
-                date = dateSource;
+            // Handle string dates (YYYY-MM-DD format)
+            else if (typeof invoice.invoiceDate === 'string') {
+                if (invoice.invoiceDate.includes('T')) {
+                    date = new Date(invoice.invoiceDate);
+                } else {
+                    // For YYYY-MM-DD format, add time to avoid timezone issues
+                    date = new Date(invoice.invoiceDate + 'T00:00:00');
+                }
             }
             
             if (date && !isNaN(date.getTime())) {
@@ -322,12 +311,38 @@ function formatInvoiceDateForDisplay(invoice) {
                     month: 'short',
                     day: 'numeric'
                 });
-                console.log('Successfully formatted date:', formatted); // Debug log
+                console.log('Successfully formatted invoiceDate:', formatted);
                 return formatted;
             }
         } catch (error) {
-            console.warn('Date formatting failed for:', dateSource, error);
-            continue;
+            console.warn('invoiceDate formatting failed:', error);
+        }
+    }
+    
+    // Priority 2: Fall back to createdAt timestamp
+    if (invoice.createdAt) {
+        try {
+            let date;
+            
+            if (invoice.createdAt.toDate) {
+                date = invoice.createdAt.toDate();
+            } else if (typeof invoice.createdAt === 'string') {
+                date = new Date(invoice.createdAt);
+            } else if (typeof invoice.createdAt === 'number') {
+                date = new Date(invoice.createdAt);
+            }
+            
+            if (date && !isNaN(date.getTime())) {
+                const formatted = date.toLocaleDateString('en-IN', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                console.log('Successfully formatted createdAt:', formatted);
+                return formatted;
+            }
+        } catch (error) {
+            console.warn('createdAt formatting failed:', error);
         }
     }
     
@@ -375,10 +390,34 @@ async function loadInvoice(invoiceId) {
         }
         
         const invoice = doc.data();
+        console.log('Loading invoice data:', invoice); // Debug log
         
         // Populate form fields
         document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
-        document.getElementById('invoiceDate').value = invoice.invoiceDate || '';
+        
+        // FIX: Properly handle the date field
+        const invoiceDateInput = document.getElementById('invoiceDate');
+        if (invoice.invoiceDate) {
+            // Handle different date formats from Firebase
+            let dateValue = invoice.invoiceDate;
+            
+            // If it's a full ISO string, extract just the date part
+            if (dateValue.includes('T')) {
+                dateValue = dateValue.split('T')[0];
+            }
+            
+            // If it's a Firebase Timestamp object
+            if (dateValue.toDate) {
+                const jsDate = dateValue.toDate();
+                dateValue = jsDate.toISOString().split('T')[0];
+            }
+            
+            invoiceDateInput.value = dateValue;
+            console.log('Set invoice date to:', dateValue); // Debug log
+        } else {
+            invoiceDateInput.value = '';
+        }
+        
         document.getElementById('customerName').value = invoice.customerName || '';
         document.getElementById('customerContact').value = invoice.customerContact || '';
         document.getElementById('customerAddress').value = invoice.customerAddress || '';
