@@ -78,7 +78,7 @@ function setupEventListeners() {
     document.getElementById('billingCycleFilter').addEventListener('change', loadInvoices);
     document.getElementById('monthFilter').addEventListener('change', loadInvoices);
 
-  // Tab switching
+    // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const tabId = this.getAttribute('data-tab');
@@ -91,7 +91,6 @@ function setupEventListeners() {
         currentPage = 1;
         loadInvoices();
     });
-}
     
     // Remove item button event delegation
     document.getElementById('itemsContainer').addEventListener('click', function(e) {
@@ -227,7 +226,7 @@ function populateMonthFilter() {
     }
 }
 
-// Auth functions (same as before)
+// Auth functions
 function handleAuthStateChange(user) {
     currentUser = user;
     
@@ -237,9 +236,10 @@ function handleAuthStateChange(user) {
         document.getElementById('userEmail').textContent = user.email;
         document.getElementById('invoiceForm').style.display = 'block';
         document.getElementById('loginPrompt').style.display = 'none';
-        document.getElementById('historyContainer').style.display = 'block';
         
+        // Load initial data
         loadInvoices();
+        loadDashboardStats();
         hideLoginModal();
     } else {
         document.getElementById('loginBtn').style.display = 'block';
@@ -247,7 +247,6 @@ function handleAuthStateChange(user) {
         document.getElementById('userEmail').textContent = '';
         document.getElementById('invoiceForm').style.display = 'none';
         document.getElementById('loginPrompt').style.display = 'block';
-        document.getElementById('historyContainer').style.display = 'none';
     }
 }
 
@@ -785,30 +784,6 @@ function generateCharts(invoices) {
     
     // You can implement Chart.js integration here
     // Example: new Chart(ctx, { type: 'line', data: { ... } });
-}
-
-// Update the handleAuthStateChange function to load dashboard when user logs in
-function handleAuthStateChange(user) {
-    currentUser = user;
-    
-    if (user) {
-        document.getElementById('loginBtn').style.display = 'none';
-        document.getElementById('logoutBtn').style.display = 'block';
-        document.getElementById('userEmail').textContent = user.email;
-        document.getElementById('invoiceForm').style.display = 'block';
-        document.getElementById('loginPrompt').style.display = 'none';
-        
-        // Load initial data
-        loadInvoices();
-        loadDashboardStats();
-        hideLoginModal();
-    } else {
-        document.getElementById('loginBtn').style.display = 'block';
-        document.getElementById('logoutBtn').style.display = 'none';
-        document.getElementById('userEmail').textContent = '';
-        document.getElementById('invoiceForm').style.display = 'none';
-        document.getElementById('loginPrompt').style.display = 'block';
-    }
 }
 
 function createInvoiceCard(invoice) {
