@@ -284,15 +284,29 @@ async function saveInvoice() {
     }
     
     try {
-        await db.collection('invoices').add({
+        // Ensure all indexed fields are properly set
+        const invoiceDate = invoiceData.invoiceDate;
+        const month = invoiceDate ? invoiceDate.substring(0, 7) : ''; // YYYY-MM
+        const year = invoiceDate ? invoiceDate.substring(0, 4) : '';  // YYYY
+        
+        const invoiceToSave = {
             ...invoiceData,
             userId: currentUser.uid,
+            month: month,
+            year: year,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            // Add month field for filtering
-            month: invoiceData.invoiceDate ? invoiceData.invoiceDate.substring(0, 7) : '',
-            year: invoiceData.invoiceDate ? invoiceData.invoiceDate.substring(0, 4) : ''
-        });
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // Validate required fields for indexing
+        if (!invoiceToSave.userId) {
+            throw new Error('User ID is required');
+        }
+        if (!invoiceToSave.billingCycle) {
+            throw new Error('Billing cycle is required');
+        }
+        
+        await db.collection('invoices').add(invoiceToSave);
         
         alert('Invoice saved successfully!');
         clearForm();
@@ -411,17 +425,33 @@ async function loadInvoices() {
     const monthFilter = document.getElementById('monthFilter').value;
     
     try {
-        let query = db.collection('invoices')
-            .where('userId', '==', currentUser.uid)
-            .orderBy('createdAt', 'desc');
+        let query = db.collection('invoices');
         
-        // Apply filters
-        if (billingCycleFilter !== 'all') {
-            query = query.where('billingCycle', '==', billingCycleFilter);
-        }
-        
-        if (monthFilter !== 'all') {
-            query = query.where('month', '==', monthFilter);
+        // Build query based on filters - these will use the composite indexes
+        if (billingCycleFilter !== 'all' && monthFilter !== 'all') {
+            // Filter by both billingCycle and month
+            query = query
+                .where('userId', '==', currentUser.uid)
+                .where('billingCycle', '==', billingCycleFilter)
+                .where('month', '==', monthFilter)
+                .orderBy('createdAt', 'desc');
+        } else if (billingCycleFilter !== 'all') {
+            // Filter only by billingCycle
+            query = query
+                .where('userId', '==', currentUser.uid)
+                .where('billingCycle', '==', billingCycleFilter)
+                .orderBy('createdAt', 'desc');
+        } else if (monthFilter !== 'all') {
+            // Filter only by month
+            query = query
+                .where('userId', '==', currentUser.uid)
+                .where('month', '==', monthFilter)
+                .orderBy('createdAt', 'desc');
+        } else {
+            // No filters - just get all user invoices
+            query = query
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc');
         }
         
         const snapshot = await query.get();
@@ -433,13 +463,32 @@ async function loadInvoices() {
         
         invoicesList.innerHTML = '';
         snapshot.forEach(doc => {
-            const invoice = { id: doc.id, ...doc.data() };
+            const invoice = { 
+                id: doc.id, 
+                ...doc.data(),
+                // Convert Firestore timestamp to JavaScript Date
+                createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
+            };
             const invoiceElement = createInvoiceCard(invoice);
             invoicesList.appendChild(invoiceElement);
         });
+        
     } catch (error) {
         console.error('Error loading invoices:', error);
-        invoicesList.innerHTML = '<p>Error loading invoices</p>';
+        
+        // Show specific error message with index creation link
+        if (error.code === 'failed-precondition') {
+            invoicesList.innerHTML = `
+                <div class="error-message">
+                    <p><strong>Index Required:</strong> Please create the Firestore composite index.</p>
+                    <p>Error: ${error.message}</p>
+                    <p>Click the link in the browser console to create the index automatically, 
+                    or create it manually in Firebase Console under Firestore > Indexes.</p>
+                </div>
+            `;
+        } else {
+            invoicesList.innerHTML = '<p>Error loading invoices: ' + error.message + '</p>';
+        }
     }
 }
 
