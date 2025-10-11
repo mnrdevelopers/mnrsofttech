@@ -241,35 +241,40 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Load today's invoices for summary with better query
-    function loadTodayInvoices(userId) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Use createdAt field instead of date for better querying
-        db.collection('invoices')
-            .where('userId', '==', userId)
-            .where('createdAt', '>=', today)
-            .get()
-            .then((querySnapshot) => {
-                let count = 0;
-                let revenue = 0;
-                
-                querySnapshot.forEach((doc) => {
-                    count++;
-                    const invoice = doc.data();
-                    revenue += invoice.total || 0;
-                });
-                
-                document.getElementById('todayInvoicesCount').textContent = count;
-                document.getElementById('todayRevenue').textContent = `₹${revenue.toFixed(2)}`;
-            })
-            .catch((error) => {
-                console.error('Error loading today invoices:', error);
-                // Don't show alert for index errors during initial load
-                if (!error.message.includes('index')) {
-                    showAlert('Error loading today\'s invoices', 'warning');
-                }
+    // Load today's invoices for summary with better query and error handling
+function loadTodayInvoices(userId) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Use createdAt field instead of date for better querying
+    db.collection('invoices')
+        .where('userId', '==', userId)
+        .where('createdAt', '>=', today)
+        .get()
+        .then((querySnapshot) => {
+            let count = 0;
+            let revenue = 0;
+            
+            querySnapshot.forEach((doc) => {
+                count++;
+                const invoice = doc.data();
+                revenue += invoice.total || 0;
             });
-    }
-});
+            
+            document.getElementById('todayInvoicesCount').textContent = count;
+            document.getElementById('todayRevenue').textContent = `₹${revenue.toFixed(2)}`;
+        })
+        .catch((error) => {
+            console.error('Error loading today invoices:', error);
+            
+            // Check if it's an index error
+            if (error.message.includes('index')) {
+                console.log('Index is being created. This is normal for new queries.');
+                // Set default values while index is building
+                document.getElementById('todayInvoicesCount').textContent = '0';
+                document.getElementById('todayRevenue').textContent = '₹0.00';
+            } else if (!error.message.includes('permission')) {
+                showAlert('Error loading today\'s invoices', 'warning');
+            }
+        });
+}
