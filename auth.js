@@ -94,7 +94,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     businessName: businessName,
                     businessContact: businessContact,
                     businessAddress: businessAddress,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    invoicePrefix: 'INV'
                 });
             })
             .then(() => {
@@ -138,6 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         businessName: user.displayName || 'My Business',
                         businessContact: user.email,
                         businessAddress: 'Update your business address',
+                        invoicePrefix: 'INV',
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }
@@ -147,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 authModal.hide();
                 showAlert('Login successful!', 'success');
             })
-            .catch((error) => {
+            .catch((error) {
                 showLoading(false);
                 console.error('Google login error:', error);
                 showAlert('Google login failed. Please try again.', 'danger');
@@ -216,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
 
-    // Load user business info
+    // Load user business info with better error handling
     function loadUserBusinessInfo(userId) {
         db.collection('users').doc(userId).get()
             .then((doc) => {
@@ -232,17 +234,22 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch((error) => {
                 console.error('Error loading user data:', error);
+                // Don't show alert for permission errors during initial load
+                if (!error.message.includes('permission')) {
+                    showAlert('Error loading user data', 'danger');
+                }
             });
     }
 
-    // Load today's invoices for summary
+    // Load today's invoices for summary with better query
     function loadTodayInvoices(userId) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
+        // Use createdAt field instead of date for better querying
         db.collection('invoices')
             .where('userId', '==', userId)
-            .where('date', '>=', today)
+            .where('createdAt', '>=', today)
             .get()
             .then((querySnapshot) => {
                 let count = 0;
@@ -259,6 +266,10 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch((error) => {
                 console.error('Error loading today invoices:', error);
+                // Don't show alert for index errors during initial load
+                if (!error.message.includes('index')) {
+                    showAlert('Error loading today\'s invoices', 'warning');
+                }
             });
     }
 });
