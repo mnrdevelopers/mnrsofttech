@@ -473,3 +473,208 @@ footer p {
         margin: 15mm;
     }
 }
+
+/* Billing Cycle Styles */
+.date-range {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.date-range input {
+    flex: 1;
+}
+
+.date-range span {
+    color: #666;
+    font-weight: bold;
+}
+
+/* Monthly Services Styles */
+.monthly-service-row {
+    display: flex;
+    gap: 0.8rem;
+    margin-bottom: 0.8rem;
+    align-items: center;
+}
+
+.monthly-service-row input {
+    flex: 1;
+    padding: 0.6rem;
+}
+
+.monthly-service-row .service-desc {
+    flex: 2;
+}
+
+.monthly-service-row .service-price {
+    max-width: 150px;
+}
+
+.remove-service {
+    background-color: var(--danger-color);
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+.remove-service:hover {
+    background-color: #c0392b;
+}
+
+/* History Filter Styles */
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.filter-controls select {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+}
+
+/* Invoice Card Enhancements */
+.billing-cycle-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+    text-transform: uppercase;
+}
+
+.badge-daily {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge-monthly {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+}
+
+.period-info {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.2rem;
+}
+
+/* Auth Styles (keep existing) */
+.auth-section {
+    position: absolute;
+    top: 1.5rem;
+    right: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-auth {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+}
+
+.btn-auth:hover {
+    background-color: #2980b9;
+}
+
+.user-info {
+    color: var(--light-color);
+    font-size: 0.9rem;
+}
+
+/* Modal Styles (keep existing) */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.error-message {
+    background-color: #fee;
+    color: #c33;
+    padding: 0.8rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+    border-left: 4px solid #c33;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .history-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-controls {
+        justify-content: space-between;
+    }
+    
+    .date-range {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .monthly-service-row {
+        flex-wrap: wrap;
+    }
+    
+    .monthly-service-row input {
+        flex: 1 1 100%;
+        margin-bottom: 0.5rem;
+    }
+}
