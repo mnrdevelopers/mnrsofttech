@@ -846,4 +846,5 @@ function handleFirebaseError(error, operation) {
     }
     
     showToast(message, 'error');
+ }
 }
