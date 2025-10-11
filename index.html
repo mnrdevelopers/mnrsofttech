@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-     <header>
+    <header>
         <div class="logo-container">
             <div class="logo-icon">
                 <i class="fas fa-laptop-code"></i>
@@ -18,13 +18,34 @@
                 <p>Computer Software & Hardware Services</p>
             </div>
         </div>
+        <div class="auth-section">
+            <button id="loginBtn" class="btn-auth">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+            <button id="logoutBtn" class="btn-auth" style="display: none;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+            <span id="userEmail" class="user-info"></span>
+        </div>
     </header>
 
     <main>
         <div class="container">
             <div class="form-container">
                 <h2>Generate Invoice</h2>
-                <form id="invoiceForm">
+                <div id="loginPrompt" class="login-prompt">
+                    <i class="fas fa-lock"></i>
+                    <p>Please login to access the invoice generator</p>
+                </div>
+                <form id="invoiceForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="billingCycle">Billing Cycle</label>
+                        <select id="billingCycle" required>
+                            <option value="daily">Daily Billing</option>
+                            <option value="monthly">Monthly Billing</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="invoiceNumber">Invoice Number</label>
                         <input type="text" id="invoiceNumber" required>
@@ -50,30 +71,59 @@
                         <textarea id="customerAddress" rows="3"></textarea>
                     </div>
                     
-                    <h3>Services/Products</h3>
-                    <div id="itemsContainer">
-                        <div class="item-row">
-                            <input type="text" class="item-desc" placeholder="Description" required>
-                            <input type="number" class="item-qty" placeholder="Qty" min="1" value="1" required>
-                            <input type="number" class="item-price" placeholder="Price" min="0" step="0.01" required>
-                            <select class="item-warranty">
-                                <option value="no-warranty">No Warranty</option>
-                                <option value="7-days">7 Days</option>
-                                <option value="15-days">15 Days</option>
-                                <option value="1-month">1 Month</option>
-                                <option value="3-months">3 Months</option>
-                                <option value="6-months">6 Months</option>
-                                <option value="1-year">1 Year</option>
-                                <option value="custom">Custom</option>
-                            </select>
-                            <input type="text" class="custom-warranty-input" placeholder="Enter warranty details" style="display: none;">
-                            <button type="button" class="remove-item"><i class="fas fa-times"></i></button>
+                    <!-- Monthly Billing Fields (Initially Hidden) -->
+                    <div id="monthlyBillingFields" style="display: none;">
+                        <div class="form-group">
+                            <label for="billingPeriod">Billing Period</label>
+                            <div class="date-range">
+                                <input type="date" id="startDate" placeholder="Start Date">
+                                <span>to</span>
+                                <input type="date" id="endDate" placeholder="End Date">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="monthlyServices">Monthly Services</label>
+                            <div id="monthlyServicesContainer">
+                                <div class="monthly-service-row">
+                                    <input type="text" class="service-desc" placeholder="Service Description" required>
+                                    <input type="number" class="service-price" placeholder="Monthly Price" min="0" step="0.01" required>
+                                    <button type="button" class="remove-service"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <button type="button" id="addService" class="btn-secondary">
+                                <i class="fas fa-plus"></i> Add Service
+                            </button>
                         </div>
                     </div>
                     
-                    <button type="button" id="addItem" class="btn-secondary">
-                        <i class="fas fa-plus"></i> Add Item
-                    </button>
+                    <!-- Daily Billing Fields -->
+                    <div id="dailyBillingFields">
+                        <h3>Services/Products</h3>
+                        <div id="itemsContainer">
+                            <div class="item-row">
+                                <input type="text" class="item-desc" placeholder="Description" required>
+                                <input type="number" class="item-qty" placeholder="Qty" min="1" value="1" required>
+                                <input type="number" class="item-price" placeholder="Price" min="0" step="0.01" required>
+                                <select class="item-warranty">
+                                    <option value="no-warranty">No Warranty</option>
+                                    <option value="7-days">7 Days</option>
+                                    <option value="15-days">15 Days</option>
+                                    <option value="1-month">1 Month</option>
+                                    <option value="3-months">3 Months</option>
+                                    <option value="6-months">6 Months</option>
+                                    <option value="1-year">1 Year</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                                <input type="text" class="custom-warranty-input" placeholder="Enter warranty details" style="display: none;">
+                                <button type="button" class="remove-item"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        
+                        <button type="button" id="addItem" class="btn-secondary">
+                            <i class="fas fa-plus"></i> Add Item
+                        </button>
+                    </div>
                     
                     <div class="form-group">
                         <label for="notes">Notes</label>
@@ -81,6 +131,9 @@
                     </div>
                     
                     <div class="button-group">
+                        <button type="button" id="saveInvoiceBtn" class="btn-primary">
+                            <i class="fas fa-save"></i> Save Invoice
+                        </button>
                         <button type="button" id="previewBtn" class="btn-primary">
                             <i class="fas fa-eye"></i> Preview Invoice
                         </button>
@@ -106,14 +159,62 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Invoices History Section -->
+            <div class="history-container" style="grid-column: 1 / -1; display: none;" id="historyContainer">
+                <div class="history-header">
+                    <h2>Saved Invoices</h2>
+                    <div class="filter-controls">
+                        <select id="billingCycleFilter">
+                            <option value="all">All Billing Cycles</option>
+                            <option value="daily">Daily Bills</option>
+                            <option value="monthly">Monthly Bills</option>
+                        </select>
+                        <select id="monthFilter">
+                            <option value="all">All Months</option>
+                            <!-- Months will be populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+                <div id="invoicesList" class="invoices-list">
+                    <!-- Invoices will be loaded here -->
+                </div>
+            </div>
         </div>
     </main>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Login to MNR SoftTech</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%;">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </form>
+            <div id="loginError" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
 
     <footer>
         <p>&copy; <span id="currentYear"></span> MNR SoftTech Solutions. All rights reserved.</p>
         <p>Contact: mnrdeveloper11@gmail.com | Phone: +917416006394</p>
     </footer>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="script.js"></script>
