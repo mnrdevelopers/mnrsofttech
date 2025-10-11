@@ -17,10 +17,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 itemRow.remove();
             } else {
                 // If it's the last row, just clear the values
-                itemRow.querySelectorAll('input').forEach(input => input.value = '');
-                itemRow.querySelector('.item-qty').value = '1';
-                itemRow.querySelector('.item-warranty').value = 'no-warranty';
-                itemRow.querySelector('.custom-warranty-input').style.display = 'none';
+                itemRow.querySelectorAll('input').forEach(input => {
+                    if (input.type !== 'number' || input.classList.contains('item-qty')) {
+                        input.value = '';
+                    }
+                });
+                row.querySelector('.item-qty').value = '1';
+                row.querySelector('.item-warranty').value = 'no-warranty';
+                row.querySelector('.custom-warranty-input').style.display = 'none';
+                row.querySelector('.custom-warranty-input').value = '';
             }
             generateInvoicePreview();
         }
@@ -34,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 customWarrantyInput.style.display = 'block';
             } else {
                 customWarrantyInput.style.display = 'none';
+                customWarrantyInput.value = '';
             }
             generateInvoicePreview();
         }
@@ -77,8 +83,10 @@ function setupModal() {
     const modal = document.getElementById('invoiceListModal');
     const closeBtn = document.querySelector('.close');
     
-    closeBtn.onclick = function() {
-        modal.style.display = 'none';
+    if (closeBtn) {
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
     }
     
     window.onclick = function(event) {
@@ -89,7 +97,10 @@ function setupModal() {
 }
 
 function showModal() {
-    document.getElementById('invoiceListModal').style.display = 'block';
+    const modal = document.getElementById('invoiceListModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
 }
 
 function addNewItemRow() {
@@ -97,9 +108,9 @@ function addNewItemRow() {
     const newItemRow = document.createElement('div');
     newItemRow.className = 'item-row';
     newItemRow.innerHTML = `
-        <input type="text" class="item-desc" placeholder="Description" required>
-        <input type="number" class="item-qty" placeholder="Qty" min="1" value="1" required>
-        <input type="number" class="item-price" placeholder="Price" min="0" step="0.01" required>
+        <input type="text" class="item-desc" placeholder="Description">
+        <input type="number" class="item-qty" placeholder="Qty" min="1" value="1">
+        <input type="number" class="item-price" placeholder="Price" min="0" step="0.01">
         <select class="item-warranty">
             <option value="no-warranty">No Warranty</option>
             <option value="7-days">7 Days</option>
@@ -117,6 +128,8 @@ function addNewItemRow() {
     
     // Focus on the new description field
     newItemRow.querySelector('.item-desc').focus();
+    
+    return newItemRow;
 }
 
 function collectInvoiceData() {
@@ -138,9 +151,9 @@ function collectInvoiceData() {
         const price = parseFloat(row.querySelector('.item-price').value) || 0;
         const warranty = row.querySelector('.item-warranty').value;
         const customWarranty = row.querySelector('.custom-warranty-input').value;
-        const total = quantity * price;
         
-        if (description) {
+        if (description && price > 0) {
+            const total = quantity * price;
             items.push({
                 description,
                 quantity,
@@ -212,12 +225,13 @@ async function loadInvoicesFromFirebase() {
             invoicesHTML += `
                 <div class="invoice-item" data-id="${doc.id}">
                     <div class="invoice-item-header">
-                        <strong>${invoice.invoiceNumber}</strong>
+                        <strong>${invoice.invoiceNumber || 'No Number'}</strong>
                         <span class="invoice-date">${new Date(invoice.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div class="invoice-item-body">
-                        <div>Customer: ${invoice.customerName}</div>
-                        <div>Total: ₹${invoice.grandTotal.toFixed(2)}</div>
+                        <div>Customer: ${invoice.customerName || 'No Name'}</div>
+                        <div>Total: ₹${(invoice.grandTotal || 0).toFixed(2)}</div>
+                        <div>Items: ${invoice.items ? invoice.items.length : 0}</div>
                     </div>
                     <div class="invoice-item-actions">
                         <button class="btn-small btn-load" onclick="loadInvoice('${doc.id}')">
@@ -252,9 +266,9 @@ async function loadInvoice(invoiceId) {
         const invoice = doc.data();
         
         // Populate form fields
-        document.getElementById('invoiceNumber').value = invoice.invoiceNumber;
-        document.getElementById('invoiceDate').value = invoice.invoiceDate;
-        document.getElementById('customerName').value = invoice.customerName;
+        document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
+        document.getElementById('invoiceDate').value = invoice.invoiceDate || '';
+        document.getElementById('customerName').value = invoice.customerName || '';
         document.getElementById('customerContact').value = invoice.customerContact || '';
         document.getElementById('customerAddress').value = invoice.customerAddress || '';
         document.getElementById('notes').value = invoice.notes || '';
@@ -264,16 +278,15 @@ async function loadInvoice(invoiceId) {
         itemsContainer.innerHTML = '';
         
         // Add items
-        invoice.items.forEach((item, index) => {
-            if (index === 0) {
-                // Use the first existing row
-                const firstRow = document.querySelector('.item-row') || addNewItemRow();
-                populateItemRow(firstRow, item);
-            } else {
+        if (invoice.items && invoice.items.length > 0) {
+            invoice.items.forEach((item, index) => {
                 const newRow = addNewItemRow();
                 populateItemRow(newRow, item);
-            }
-        });
+            });
+        } else {
+            // Add one empty row if no items
+            addNewItemRow();
+        }
         
         // Close modal
         document.getElementById('invoiceListModal').style.display = 'none';
@@ -288,20 +301,28 @@ async function loadInvoice(invoiceId) {
 }
 
 function populateItemRow(row, item) {
-    row.querySelector('.item-desc').value = item.description;
-    row.querySelector('.item-qty').value = item.quantity;
-    row.querySelector('.item-price').value = item.price;
+    if (!row || !item) return;
     
+    const descInput = row.querySelector('.item-desc');
+    const qtyInput = row.querySelector('.item-qty');
+    const priceInput = row.querySelector('.item-price');
     const warrantySelect = row.querySelector('.item-warranty');
     const customWarrantyInput = row.querySelector('.custom-warranty-input');
     
-    if (item.warranty && !['no-warranty', '7-days', '15-days', '1-month', '3-months', '6-months', '1-year'].includes(item.warranty)) {
-        warrantySelect.value = 'custom';
-        customWarrantyInput.style.display = 'block';
-        customWarrantyInput.value = item.warranty;
-    } else {
-        warrantySelect.value = item.warranty || 'no-warranty';
-        customWarrantyInput.style.display = 'none';
+    if (descInput) descInput.value = item.description || '';
+    if (qtyInput) qtyInput.value = item.quantity || 1;
+    if (priceInput) priceInput.value = item.price || 0;
+    
+    if (warrantySelect && customWarrantyInput) {
+        if (item.warranty && !['no-warranty', '7-days', '15-days', '1-month', '3-months', '6-months', '1-year'].includes(item.warranty)) {
+            warrantySelect.value = 'custom';
+            customWarrantyInput.style.display = 'block';
+            customWarrantyInput.value = item.warranty || '';
+        } else {
+            warrantySelect.value = item.warranty || 'no-warranty';
+            customWarrantyInput.style.display = 'none';
+            customWarrantyInput.value = '';
+        }
     }
 }
 
@@ -358,39 +379,41 @@ function generateInvoicePreview() {
                 </div>
             </div>
             
-            <table class="invoice-table">
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th>Qty</th>
-                        <th>Price</th>
-                        <th class="text-right">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${items.map(item => `
+            ${items.length > 0 ? `
+                <table class="invoice-table">
+                    <thead>
                         <tr>
-                            <td>
-                                ${item.description}
-                                ${item.warranty && item.warranty !== 'no-warranty' ? 
-                                    `<span class="warranty-badge">
-                                        Warranty: ${item.warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
-                                    </span>` : ''}
-                            </td>
-                            <td>${item.quantity}</td>
-                            <td>₹${item.price.toFixed(2)}</td>
-                            <td class="text-right">₹${item.total.toFixed(2)}</td>
+                            <th>Description</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th class="text-right">Amount</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            
-             <div class="invoice-totals">
-                <div class="invoice-totals-row invoice-grand-total">
-                    <span class="invoice-totals-label">Total Amount:</span>
-                    <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
+                    </thead>
+                    <tbody>
+                        ${items.map(item => `
+                            <tr>
+                                <td>
+                                    ${item.description}
+                                    ${item.warranty && item.warranty !== 'no-warranty' ? 
+                                        `<span class="warranty-badge">
+                                            Warranty: ${formatWarrantyText(item.warranty)}
+                                        </span>` : ''}
+                                </td>
+                                <td>${item.quantity}</td>
+                                <td>₹${item.price.toFixed(2)}</td>
+                                <td class="text-right">₹${item.total.toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                <div class="invoice-totals">
+                    <div class="invoice-totals-row invoice-grand-total">
+                        <span class="invoice-totals-label">Total Amount:</span>
+                        <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
+                    </div>
                 </div>
-            </div>
+            ` : '<p style="text-align: center; padding: 2rem; color: #666;">No items added</p>'}
             
             <div class="warranty-disclaimer">
                 <h3>Warranty Terms</h3>
@@ -419,7 +442,14 @@ function generateInvoicePreview() {
     
     // Update the preview
     const previewContainer = document.getElementById('invoicePreview');
-    previewContainer.innerHTML = invoiceHTML;
+    if (previewContainer) {
+        previewContainer.innerHTML = invoiceHTML;
+    }
+}
+
+function formatWarrantyText(warranty) {
+    if (!warranty) return '';
+    return warranty.replace(/-/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
 }
 
 function downloadAsPDF() {
