@@ -10,7 +10,22 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+try {
+    firebase.initializeApp(firebaseConfig);
+    console.log("Firebase initialized successfully");
+} catch (error) {
+    console.error("Firebase initialization error:", error);
+}
 
 // Initialize Firestore
 const db = firebase.firestore();
+
+// Test Firestore connection
+db.collection('test').doc('connection').set({
+    test: true,
+    timestamp: new Date().toISOString()
+}).then(() => {
+    console.log("Firestore connection test successful");
+}).catch((error) => {
+    console.error("Firestore connection test failed:", error);
+});
