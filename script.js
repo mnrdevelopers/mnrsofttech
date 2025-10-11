@@ -201,9 +201,8 @@ async function saveInvoiceToFirebase() {
         // Ensure dates are stored properly
         const invoiceToSave = {
             ...invoiceData,
-            // Store dates as ISO strings for consistency
             invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
-            createdAt: new Date().toISOString(), // Always use current timestamp
+            createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
@@ -216,7 +215,14 @@ async function saveInvoiceToFirebase() {
         
     } catch (error) {
         console.error('Error saving invoice:', error);
-        alert('Error saving invoice: ' + error.message);
+        
+        if (error.code === 'permission-denied') {
+            alert('Permission denied. Please check Firestore security rules.');
+        } else if (error.code === 'unavailable') {
+            alert('Network error. Please check your internet connection.');
+        } else {
+            alert('Error saving invoice: ' + error.message);
+        }
     }
 }
 
