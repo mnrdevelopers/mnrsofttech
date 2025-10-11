@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 
-    // Google login
+    // Google login - FIXED SYNTAX ERROR HERE
     googleLoginBtn.addEventListener('click', function() {
         const provider = new firebase.auth.GoogleAuthProvider();
         
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 authModal.hide();
                 showAlert('Login successful!', 'success');
             })
-            .catch((error) {
+            .catch((error) => {  // REMOVED THE EXTRA PARAMETER THAT CAUSED THE ERROR
                 showLoading(false);
                 console.error('Google login error:', error);
                 showAlert('Google login failed. Please try again.', 'danger');
