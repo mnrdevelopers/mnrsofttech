@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
+    <!-- HEADER -->
     <header>
         <div class="logo-container">
             <div class="logo-icon">
@@ -29,161 +30,258 @@
         </div>
     </header>
 
+    <!-- MAIN SECTION -->
     <main>
         <div class="container">
-            <div class="form-container">
-                <h2>Generate Invoice</h2>
-                <div id="loginPrompt" class="login-prompt">
-                    <i class="fas fa-lock"></i>
-                    <p>Please login to access the invoice generator</p>
+
+            <!-- TABS -->
+            <div class="tabs-container" style="grid-column: 1 / -1;">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="invoice-generator">Invoice Generator</button>
+                    <button class="tab-btn" data-tab="invoices-history">Invoices History</button>
+                    <button class="tab-btn" data-tab="dashboard">Dashboard</button>
                 </div>
-                <form id="invoiceForm" style="display: none;">
-                    <div class="form-group">
-                        <label for="billingCycle">Billing Cycle</label>
-                        <select id="billingCycle" required>
-                            <option value="daily">Daily Billing</option>
-                            <option value="monthly">Monthly Billing</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="invoiceNumber">Invoice Number</label>
-                        <input type="text" id="invoiceNumber" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="invoiceDate">Date</label>
-                        <input type="date" id="invoiceDate" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="customerName">Customer Name</label>
-                        <input type="text" id="customerName" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="customerContact">Contact Number</label>
-                        <input type="text" id="customerContact">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="customerAddress">Address</label>
-                        <textarea id="customerAddress" rows="3"></textarea>
-                    </div>
-                    
-                    <!-- Monthly Billing Fields (Initially Hidden) -->
-                    <div id="monthlyBillingFields" style="display: none;">
-                        <div class="form-group">
-                            <label for="billingPeriod">Billing Period</label>
-                            <div class="date-range">
-                                <input type="date" id="startDate" placeholder="Start Date">
-                                <span>to</span>
-                                <input type="date" id="endDate" placeholder="End Date">
-                            </div>
+
+                <!-- INVOICE GENERATOR TAB -->
+                <div class="tab-content active" id="invoice-generator">
+                    <div class="form-container">
+                        <h2>Generate Invoice</h2>
+
+                        <div id="loginPrompt" class="login-prompt">
+                            <i class="fas fa-lock"></i>
+                            <p>Please login to access the invoice generator</p>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="monthlyServices">Monthly Services</label>
-                            <div id="monthlyServicesContainer">
-                                <div class="monthly-service-row">
-                                    <input type="text" class="service-desc" placeholder="Service Description" required>
-                                    <input type="number" class="service-price" placeholder="Monthly Price" min="0" step="0.01" required>
-                                    <button type="button" class="remove-service"><i class="fas fa-times"></i></button>
+
+                        <form id="invoiceForm" style="display: none;">
+                            <!-- Billing Cycle -->
+                            <div class="form-group">
+                                <label for="billingCycle">Billing Cycle</label>
+                                <select id="billingCycle" required>
+                                    <option value="daily">Daily Billing</option>
+                                    <option value="monthly">Monthly Billing</option>
+                                </select>
+                            </div>
+
+                            <!-- Basic Invoice Info -->
+                            <div class="form-group">
+                                <label for="invoiceNumber">Invoice Number</label>
+                                <input type="text" id="invoiceNumber" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="invoiceDate">Date</label>
+                                <input type="date" id="invoiceDate" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="customerName">Customer Name</label>
+                                <input type="text" id="customerName" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="customerContact">Contact Number</label>
+                                <input type="text" id="customerContact">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="customerAddress">Address</label>
+                                <textarea id="customerAddress" rows="3"></textarea>
+                            </div>
+
+                            <!-- MONTHLY BILLING -->
+                            <div id="monthlyBillingFields" style="display: none;">
+                                <div class="form-group">
+                                    <label for="billingPeriod">Billing Period</label>
+                                    <div class="date-range">
+                                        <input type="date" id="startDate" placeholder="Start Date">
+                                        <span>to</span>
+                                        <input type="date" id="endDate" placeholder="End Date">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="monthlyServices">Monthly Services</label>
+                                    <div id="monthlyServicesContainer">
+                                        <div class="monthly-service-row">
+                                            <input type="text" class="service-desc" placeholder="Service Description" required>
+                                            <input type="number" class="service-price" placeholder="Monthly Price" min="0" step="0.01" required>
+                                            <button type="button" class="remove-service"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="addService" class="btn-secondary">
+                                        <i class="fas fa-plus"></i> Add Service
+                                    </button>
                                 </div>
                             </div>
-                            <button type="button" id="addService" class="btn-secondary">
-                                <i class="fas fa-plus"></i> Add Service
-                            </button>
-                        </div>
+
+                            <!-- DAILY BILLING -->
+                            <div id="dailyBillingFields">
+                                <h3>Services/Products</h3>
+                                <div id="itemsContainer">
+                                    <div class="item-row">
+                                        <input type="text" class="item-desc" placeholder="Description" required>
+                                        <input type="number" class="item-qty" placeholder="Qty" min="1" value="1" required>
+                                        <input type="number" class="item-price" placeholder="Price" min="0" step="0.01" required>
+                                        <select class="item-warranty">
+                                            <option value="no-warranty">No Warranty</option>
+                                            <option value="7-days">7 Days</option>
+                                            <option value="15-days">15 Days</option>
+                                            <option value="1-month">1 Month</option>
+                                            <option value="3-months">3 Months</option>
+                                            <option value="6-months">6 Months</option>
+                                            <option value="1-year">1 Year</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        <input type="text" class="custom-warranty-input" placeholder="Enter warranty details" style="display: none;">
+                                        <button type="button" class="remove-item"><i class="fas fa-times"></i></button>
+                                    </div>
+                                </div>
+                                <button type="button" id="addItem" class="btn-secondary">
+                                    <i class="fas fa-plus"></i> Add Item
+                                </button>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="form-group">
+                                <label for="notes">Notes</label>
+                                <textarea id="notes" rows="3" placeholder="Thank you for your business!"></textarea>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="button-group">
+                                <button type="button" id="saveInvoiceBtn" class="btn-primary">
+                                    <i class="fas fa-save"></i> Save Invoice
+                                </button>
+                                <button type="button" id="previewBtn" class="btn-primary">
+                                    <i class="fas fa-eye"></i> Preview Invoice
+                                </button>
+                                <button type="button" id="downloadPdfBtn" class="btn-primary">
+                                    <i class="fas fa-file-pdf"></i> Download PDF
+                                </button>
+                                <button type="button" id="downloadJpgBtn" class="btn-primary">
+                                    <i class="fas fa-file-image"></i> Download JPEG
+                                </button>
+                                <button type="button" id="printBtn" class="btn-primary">
+                                    <i class="fas fa-print"></i> Print (A4)
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    
-                    <!-- Daily Billing Fields -->
-                    <div id="dailyBillingFields">
-                        <h3>Services/Products</h3>
-                        <div id="itemsContainer">
-                            <div class="item-row">
-                                <input type="text" class="item-desc" placeholder="Description" required>
-                                <input type="number" class="item-qty" placeholder="Qty" min="1" value="1" required>
-                                <input type="number" class="item-price" placeholder="Price" min="0" step="0.01" required>
-                                <select class="item-warranty">
-                                    <option value="no-warranty">No Warranty</option>
-                                    <option value="7-days">7 Days</option>
-                                    <option value="15-days">15 Days</option>
-                                    <option value="1-month">1 Month</option>
-                                    <option value="3-months">3 Months</option>
-                                    <option value="6-months">6 Months</option>
-                                    <option value="1-year">1 Year</option>
-                                    <option value="custom">Custom</option>
-                                </select>
-                                <input type="text" class="custom-warranty-input" placeholder="Enter warranty details" style="display: none;">
-                                <button type="button" class="remove-item"><i class="fas fa-times"></i></button>
+
+                    <!-- Invoice Preview -->
+                    <div class="preview-container">
+                        <h2>Invoice Preview</h2>
+                        <div id="invoicePreview">
+                            <div class="preview-placeholder">
+                                <i class="fas fa-receipt"></i>
+                                <p>Your invoice will appear here</p>
                             </div>
                         </div>
-                        
-                        <button type="button" id="addItem" class="btn-secondary">
-                            <i class="fas fa-plus"></i> Add Item
-                        </button>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="notes">Notes</label>
-                        <textarea id="notes" rows="3" placeholder="Thank you for your business!"></textarea>
+                </div>
+
+                <!-- INVOICES HISTORY TAB -->
+                <div class="tab-content" id="invoices-history">
+                    <div class="history-container">
+                        <div class="history-header">
+                            <h2>Invoices History</h2>
+                            <div class="filter-controls">
+                                <select id="billingCycleFilter">
+                                    <option value="all">All Billing Cycles</option>
+                                    <option value="daily">Daily Bills</option>
+                                    <option value="monthly">Monthly Bills</option>
+                                </select>
+                                <select id="monthFilter">
+                                    <option value="all">All Months</option>
+                                </select>
+                                <input type="text" id="searchInvoice" placeholder="Search invoices...">
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="invoices-table">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Date</th>
+                                        <th>Customer</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoicesTableBody">
+                                    <!-- Invoices will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-pagination" id="paginationControls">
+                            <!-- Pagination controls -->
+                        </div>
                     </div>
-                    
-                    <div class="button-group">
-                        <button type="button" id="saveInvoiceBtn" class="btn-primary">
-                            <i class="fas fa-save"></i> Save Invoice
-                        </button>
-                        <button type="button" id="previewBtn" class="btn-primary">
-                            <i class="fas fa-eye"></i> Preview Invoice
-                        </button>
-                        <button type="button" id="downloadPdfBtn" class="btn-primary">
-                            <i class="fas fa-file-pdf"></i> Download PDF
-                        </button>
-                        <button type="button" id="downloadJpgBtn" class="btn-primary">
-                            <i class="fas fa-file-image"></i> Download JPEG
-                        </button>
-                        <button type="button" id="printBtn" class="btn-primary">
-                            <i class="fas fa-print"></i> Print (A4)
-                        </button>
-                    </div>
-                </form>
-            </div>
-            
-            <div class="preview-container">
-                <h2>Invoice Preview</h2>
-                <div id="invoicePreview">
-                    <div class="preview-placeholder">
-                        <i class="fas fa-receipt"></i>
-                        <p>Your invoice will appear here</p>
+                </div>
+
+                <!-- DASHBOARD TAB -->
+                <div class="tab-content" id="dashboard">
+                    <div class="dashboard-container">
+                        <h2>Income Statistics</h2>
+                        <div class="stats-cards">
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+                                <div class="stat-info">
+                                    <h3>Today's Income</h3>
+                                    <div class="stat-amount" id="todayIncome">₹0.00</div>
+                                    <div class="stat-change" id="todayChange">+0% from yesterday</div>
+                                </div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-calendar-week"></i></div>
+                                <div class="stat-info">
+                                    <h3>This Week</h3>
+                                    <div class="stat-amount" id="weekIncome">₹0.00</div>
+                                    <div class="stat-change" id="weekChange">+0% from last week</div>
+                                </div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-calendar-month"></i></div>
+                                <div class="stat-info">
+                                    <h3>This Month</h3>
+                                    <div class="stat-amount" id="monthIncome">₹0.00</div>
+                                    <div class="stat-change" id="monthChange">+0% from last month</div>
+                                </div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                                <div class="stat-info">
+                                    <h3>Total Income</h3>
+                                    <div class="stat-amount" id="totalIncome">₹0.00</div>
+                                    <div class="stat-change">All time</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="charts-container">
+                            <div class="chart-card">
+                                <h3>Income Trend (Last 7 Days)</h3>
+                                <canvas id="incomeChart" width="400" height="200"></canvas>
+                            </div>
+
+                            <div class="chart-card">
+                                <h3>Billing Type Distribution</h3>
+                                <canvas id="typeChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Invoices History Section -->
-            <div class="history-container" style="grid-column: 1 / -1; display: none;" id="historyContainer">
-                <div class="history-header">
-                    <h2>Saved Invoices</h2>
-                    <div class="filter-controls">
-                        <select id="billingCycleFilter">
-                            <option value="all">All Billing Cycles</option>
-                            <option value="daily">Daily Bills</option>
-                            <option value="monthly">Monthly Bills</option>
-                        </select>
-                        <select id="monthFilter">
-                            <option value="all">All Months</option>
-                            <!-- Months will be populated dynamically -->
-                        </select>
-                    </div>
-                </div>
-                <div id="invoicesList" class="invoices-list">
-                    <!-- Invoices will be loaded here -->
-                </div>
-            </div>
         </div>
     </main>
 
-    <!-- Login Modal -->
+    <!-- LOGIN MODAL -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -205,16 +303,16 @@
         </div>
     </div>
 
+    <!-- FOOTER -->
     <footer>
         <p>&copy; <span id="currentYear"></span> MNR SoftTech Solutions. All rights reserved.</p>
-        <p>Contact: mnrdeveloper11@gmail.com | Phone: +917416006394</p>
+        <p>Contact: mnrdeveloper11@gmail.com | Phone: +91 7416006394</p>
     </footer>
 
-    <!-- Firebase SDK -->
+    <!-- LIBRARIES -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="script.js"></script>
