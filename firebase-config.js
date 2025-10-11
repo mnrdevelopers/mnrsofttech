@@ -1,12 +1,11 @@
-// Firebase configuration
+// Firebase configuration - REPLACE WITH YOUR ACTUAL CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
-  authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
-  projectId: "mnr-soft-tech-invoice",
-  storageBucket: "mnr-soft-tech-invoice.firebasestorage.app",
-  messagingSenderId: "846761019349",
-  appId: "1:846761019349:web:98adfefb8ac2b44f115f5c",
-  measurementId: "G-HTGPVDVPCR"
+    apiKey: "your-api-key",
+    authDomain: "your-project.firebaseapp.com",
+    projectId: "your-project-id",
+    storageBucket: "your-project.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "your-app-id"
 };
 
 // Initialize Firebase
@@ -15,3 +14,9 @@ firebase.initializeApp(firebaseConfig);
 // Initialize Firebase services
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Enable offline persistence (optional but recommended)
+db.enablePersistence()
+  .catch((err) => {
+      console.log("Persistence failed: ", err);
+  });
