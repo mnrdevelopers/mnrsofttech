@@ -277,4 +277,3 @@ function loadTodayInvoices(userId) {
                 showAlert('Error loading today\'s invoices', 'warning');
             }
         });
-}
