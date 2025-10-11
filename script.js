@@ -1,4 +1,4 @@
-// Firebase configuration
+// Firebase configuration and initialization
 const firebaseConfig = {
   apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
   authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
@@ -9,10 +9,22 @@ const firebaseConfig = {
   measurementId: "G-HTGPVDVPCR"
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase with error handling
+try {
+    firebase.initializeApp(firebaseConfig);
+    console.log('Firebase initialized successfully');
+} catch (error) {
+    console.error('Firebase initialization error:', error);
+}
+
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Enable offline persistence
+db.enablePersistence()
+  .catch((err) => {
+      console.log('Firebase persistence failed:', err);
+  });
 
 let currentUser = null;
 let currentEditingInvoice = null;
@@ -396,10 +408,16 @@ async function loadStats() {
 
 // Biller Management
 async function loadBillers() {
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.log('No user logged in, skipping billers load');
+        return;
+    }
     
     try {
-        const snapshot = await db.collection('billers').where('userId', '==', currentUser.uid).get();
+        const snapshot = await db.collection('billers')
+            .where('userId', '==', currentUser.uid)
+            .get();
+        
         const select = document.getElementById('billerSelect');
         const list = document.getElementById('billersList');
         
@@ -407,7 +425,7 @@ async function loadBillers() {
         list.innerHTML = '';
         
         if (snapshot.empty) {
-            list.innerHTML = '<p class="text-muted">No billers saved yet.</p>';
+            list.innerHTML = '<p class="text-muted">No billers saved yet. Add your first biller above.</p>';
             return;
         }
         
@@ -436,51 +454,80 @@ async function loadBillers() {
             `;
             list.appendChild(billerElement);
         });
+        
     } catch (error) {
         console.error('Error loading billers:', error);
+        // Show user-friendly message
+        if (error.code === 'permission-denied') {
+            showToast('Please refresh the page and login again to access billers', 'error');
+        } else {
+            showToast('Error loading billers: ' + error.message, 'error');
+        }
     }
 }
 
-async function loadBillerDetails(billerId) {
-    const doc = await db.collection('billers').doc(billerId).get();
-    if (doc.exists) {
-        const biller = doc.data();
-        // Auto-fill customer details if needed
-        document.getElementById('customerName').value = biller.name;
-        document.getElementById('customerContact').value = biller.phone || '';
-        document.getElementById('customerAddress').value = biller.address || '';
+async function loadBillerDetails() {
+    const billerId = document.getElementById('billerSelect').value;
+    if (!billerId) return;
+    
+    try {
+        const doc = await db.collection('billers').doc(billerId).get();
+        if (doc.exists) {
+            const biller = doc.data();
+            // Auto-fill customer details if needed
+            document.getElementById('customerName').value = biller.name || '';
+            document.getElementById('customerContact').value = biller.phone || '';
+            document.getElementById('customerAddress').value = biller.address || '';
+        }
+    } catch (error) {
+        console.error('Error loading biller details:', error);
     }
 }
 
 async function saveBiller(e) {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser) {
+        showToast('Please login to save billers', 'error');
+        return;
+    }
     
     const billerId = document.getElementById('billerId').value;
     const billerData = {
-        name: document.getElementById('billerName').value,
-        email: document.getElementById('billerEmail').value,
-        phone: document.getElementById('billerPhone').value,
-        address: document.getElementById('billerAddress').value,
+        name: document.getElementById('billerName').value.trim(),
+        email: document.getElementById('billerEmail').value.trim(),
+        phone: document.getElementById('billerPhone').value.trim(),
+        address: document.getElementById('billerAddress').value.trim(),
         userId: currentUser.uid,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     
+    // Validate required fields
+    if (!billerData.name) {
+        showToast('Biller name is required', 'error');
+        return;
+    }
+    
     try {
         if (billerId) {
+            // Update existing biller
             await db.collection('billers').doc(billerId).update(billerData);
+            showToast('Biller updated successfully!', 'success');
         } else {
+            // Create new biller
             billerData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
             await db.collection('billers').add(billerData);
+            showToast('Biller saved successfully!', 'success');
         }
         
-        showToast('Biller saved successfully!', 'success');
+        // Reset form and refresh list
         document.getElementById('billerForm').reset();
         document.getElementById('billerId').value = '';
         bootstrap.Modal.getInstance(document.getElementById('billerModal')).hide();
         loadBillers();
+        
     } catch (error) {
-        showToast('Error saving biller: ' + error.message, 'error');
+        console.error('Error saving biller:', error);
+        handleFirebaseError(error, 'saving biller');
     }
 }
 
