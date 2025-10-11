@@ -198,8 +198,19 @@ async function saveInvoiceToFirebase() {
             return;
         }
         
+        // Ensure dates are stored properly
+        const invoiceToSave = {
+            ...invoiceData,
+            // Store dates as ISO strings for consistency
+            invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
+            createdAt: new Date().toISOString(), // Always use current timestamp
+            updatedAt: new Date().toISOString()
+        };
+        
+        console.log('Saving invoice:', invoiceToSave);
+        
         // Save to Firestore
-        await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceData);
+        await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
         
         alert('Invoice saved successfully!');
         
@@ -222,36 +233,10 @@ async function loadInvoicesFromFirebase() {
         let invoicesHTML = '';
         snapshot.forEach(doc => {
             const invoice = doc.data();
+            console.log('Loaded invoice:', invoice); // Debug log
             
-            // Simple and safe date formatting
-            let displayDate = 'Date not available';
-            try {
-                // Try createdAt first (Firestore timestamp)
-                if (invoice.createdAt) {
-                    const date = new Date(invoice.createdAt);
-                    if (!isNaN(date.getTime())) {
-                        displayDate = date.toLocaleDateString('en-IN', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                        });
-                    }
-                }
-                // If createdAt fails, try invoiceDate
-                else if (invoice.invoiceDate) {
-                    const date = new Date(invoice.invoiceDate);
-                    if (!isNaN(date.getTime())) {
-                        displayDate = date.toLocaleDateString('en-IN', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                        });
-                    }
-                }
-            } catch (error) {
-                console.warn('Date formatting error:', error);
-                displayDate = 'Invalid Date';
-            }
+            // Robust date formatting
+            let displayDate = formatInvoiceDateForDisplay(invoice);
             
             // Safe total amount
             const totalAmount = invoice.grandTotal || invoice.subtotal || 0;
@@ -286,6 +271,62 @@ async function loadInvoicesFromFirebase() {
         console.error('Error loading invoices:', error);
         alert('Error loading invoices: ' + error.message);
     }
+}
+
+// Enhanced date formatting function
+function formatInvoiceDateForDisplay(invoice) {
+    console.log('Formatting date for invoice:', invoice); // Debug log
+    
+    // Try multiple date sources in order of preference
+    const dateSources = [
+        invoice.createdAt,      // Firebase timestamp
+        invoice.updatedAt,      // Update timestamp
+        invoice.invoiceDate,    // Original invoice date
+        new Date().toISOString() // Current date as fallback
+    ];
+    
+    for (const dateSource of dateSources) {
+        if (!dateSource) continue;
+        
+        console.log('Trying date source:', dateSource); // Debug log
+        
+        try {
+            let date;
+            
+            // Handle Firebase Timestamp objects
+            if (dateSource.toDate) {
+                date = dateSource.toDate();
+            } 
+            // Handle string dates
+            else if (typeof dateSource === 'string') {
+                date = new Date(dateSource);
+            }
+            // Handle number timestamps
+            else if (typeof dateSource === 'number') {
+                date = new Date(dateSource);
+            }
+            // Handle Date objects
+            else if (dateSource instanceof Date) {
+                date = dateSource;
+            }
+            
+            if (date && !isNaN(date.getTime())) {
+                const formatted = date.toLocaleDateString('en-IN', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                console.log('Successfully formatted date:', formatted); // Debug log
+                return formatted;
+            }
+        } catch (error) {
+            console.warn('Date formatting failed for:', dateSource, error);
+            continue;
+        }
+    }
+    
+    console.warn('All date formatting attempts failed for invoice:', invoice);
+    return 'Date not available';
 }
 
 // Add this helper function for robust date formatting
