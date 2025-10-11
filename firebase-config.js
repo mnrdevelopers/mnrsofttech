@@ -11,8 +11,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 try {
-    firebase.initializeApp(firebaseConfig);
-    console.log("Firebase initialized successfully");
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+        console.log("Firebase initialized successfully");
+    } else {
+        firebase.app(); // if already initialized, use that one
+        console.log("Firebase already initialized");
+    }
 } catch (error) {
     console.error("Firebase initialization error:", error);
 }
@@ -20,12 +25,27 @@ try {
 // Initialize Firestore
 const db = firebase.firestore();
 
-// Test Firestore connection
-db.collection('test').doc('connection').set({
-    test: true,
-    timestamp: new Date().toISOString()
-}).then(() => {
-    console.log("Firestore connection test successful");
-}).catch((error) => {
-    console.error("Firestore connection test failed:", error);
-});
+// Enable offline persistence (optional but recommended)
+db.enablePersistence()
+  .catch((err) => {
+      console.log("Persistence failed:", err);
+  });
+
+// Test Firestore connection (remove this after testing)
+async function testFirebaseConnection() {
+    try {
+        await db.collection('test').doc('connection').set({
+            test: true,
+            timestamp: new Date().toISOString()
+        });
+        console.log("Firestore connection test successful");
+        return true;
+    } catch (error) {
+        console.error("Firestore connection test failed:", error);
+        alert("Firebase connection failed. Please check:\n1. Firestore rules\n2. Internet connection\n3. Firebase configuration\n\nError: " + error.message);
+        return false;
+    }
+}
+
+// Run test on load
+setTimeout(testFirebaseConnection, 1000);
