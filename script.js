@@ -1,4 +1,4 @@
-// Firebase configuration and initialization
+// Firebase configuration - REPLACE WITH YOUR ACTUAL CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
   authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
@@ -9,149 +9,241 @@ const firebaseConfig = {
   measurementId: "G-HTGPVDVPCR"
 };
 
-// Initialize Firebase with error handling
-try {
-    firebase.initializeApp(firebaseConfig);
-    console.log('Firebase initialized successfully');
-} catch (error) {
-    console.error('Firebase initialization error:', error);
-}
-
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Enable offline persistence
-db.enablePersistence()
-  .catch((err) => {
-      console.log('Firebase persistence failed:', err);
-  });
-
+// Current user state
 let currentUser = null;
-let currentEditingInvoice = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
 function initializeApp() {
+    // Set current year in footer
     document.getElementById('currentYear').textContent = new Date().getFullYear();
-    document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
     
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invoiceDate').value = today;
+    
+    // Set default monthly period (current month)
+    const firstDay = new Date();
+    firstDay.setDate(1);
+    const lastDay = new Date();
+    lastDay.setMonth(lastDay.getMonth() + 1);
+    lastDay.setDate(0);
+    
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+    
+    // Populate month filter
+    populateMonthFilter();
+    
+    // Initialize auth state listener
     auth.onAuthStateChanged(handleAuthStateChange);
+    
+    // Setup event listeners
     setupEventListeners();
-    loadBillers();
-    loadStats();
 }
 
 function setupEventListeners() {
-    // Auth
-    document.getElementById('loginBtn').addEventListener('click', () => new bootstrap.Modal(document.getElementById('loginModal')).show());
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    // Billing cycle change
+    document.getElementById('billingCycle').addEventListener('change', handleBillingCycleChange);
     
-    // Invoice Actions
+    // Auth buttons
+    document.getElementById('loginBtn').addEventListener('click', showLoginModal);
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    
+    // Modal
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    document.querySelector('.close').addEventListener('click', hideLoginModal);
+    
+    // Invoice buttons
     document.getElementById('addItem').addEventListener('click', addNewItemRow);
+    document.getElementById('addService').addEventListener('click', addNewServiceRow);
     document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
-    document.getElementById('updateInvoiceBtn').addEventListener('click', updateInvoice);
-    document.getElementById('previewBtn').addEventListener('click', showPreview);
+    document.getElementById('previewBtn').addEventListener('click', generateInvoicePreview);
     document.getElementById('downloadPdfBtn').addEventListener('click', downloadAsPDF);
+    document.getElementById('downloadJpgBtn').addEventListener('click', downloadAsJPEG);
     document.getElementById('printBtn').addEventListener('click', printInvoice);
     
-    // Search and Filters
-    document.getElementById('searchInvoices').addEventListener('input', loadInvoices);
-    document.getElementById('statusFilter').addEventListener('change', loadInvoices);
-    document.getElementById('dateFilter').addEventListener('change', loadInvoices);
+    // Filter controls
+    document.getElementById('billingCycleFilter').addEventListener('change', loadInvoices);
+    document.getElementById('monthFilter').addEventListener('change', loadInvoices);
     
-    // Biller Management
-    document.getElementById('billerForm').addEventListener('submit', saveBiller);
-    document.getElementById('billerSelect').addEventListener('change', loadBillerDetails);
-    
-    // Auto-preview (commented out to prevent performance issues)
-    // document.getElementById('invoiceForm').addEventListener('input', debounce(generateInvoicePreview, 500));
-    
-    addNewItemRow();
-}
-
-function showSection(sectionName) {
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.add('d-none');
+    // Remove item button event delegation
+    document.getElementById('itemsContainer').addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-item') || e.target.closest('.remove-item')) {
+            const itemRow = e.target.closest('.item-row');
+            if (document.querySelectorAll('.item-row').length > 1) {
+                itemRow.remove();
+            } else {
+                itemRow.querySelectorAll('input').forEach(input => input.value = '');
+                itemRow.querySelector('.item-qty').value = '1';
+                itemRow.querySelector('.item-warranty').value = 'no-warranty';
+                itemRow.querySelector('.custom-warranty-input').style.display = 'none';
+            }
+            generateInvoicePreview();
+        }
     });
     
-    if (sectionName === 'invoice-form') {
-        document.getElementById('invoice-form-section').classList.remove('d-none');
-        resetForm();
-    } else if (sectionName === 'invoices-list') {
-        document.getElementById('invoices-list-section').classList.remove('d-none');
-        loadInvoices();
+    // Remove service button event delegation
+    document.getElementById('monthlyServicesContainer').addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-service') || e.target.closest('.remove-service')) {
+            const serviceRow = e.target.closest('.monthly-service-row');
+            if (document.querySelectorAll('.monthly-service-row').length > 1) {
+                serviceRow.remove();
+            } else {
+                serviceRow.querySelectorAll('input').forEach(input => input.value = '');
+            }
+            generateInvoicePreview();
+        }
+    });
+    
+    // Warranty selection change handler
+    document.getElementById('itemsContainer').addEventListener('change', function(e) {
+        if (e.target.classList.contains('item-warranty')) {
+            const customWarrantyInput = e.target.closest('.item-row').querySelector('.custom-warranty-input');
+            if (e.target.value === 'custom') {
+                customWarrantyInput.style.display = 'block';
+            } else {
+                customWarrantyInput.style.display = 'none';
+            }
+            generateInvoicePreview();
+        }
+    });
+    
+    // Auto-generate preview when inputs change
+    document.getElementById('invoiceForm').addEventListener('input', function() {
+        if (this.previewTimeout) {
+            clearTimeout(this.previewTimeout);
+        }
+        this.previewTimeout = setTimeout(generateInvoicePreview, 500);
+    });
+    
+    // Add initial rows
+    addNewItemRow();
+    addNewServiceRow();
+}
+
+function handleBillingCycleChange() {
+    const billingCycle = document.getElementById('billingCycle').value;
+    const dailyFields = document.getElementById('dailyBillingFields');
+    const monthlyFields = document.getElementById('monthlyBillingFields');
+    
+    if (billingCycle === 'monthly') {
+        dailyFields.style.display = 'none';
+        monthlyFields.style.display = 'block';
+    } else {
+        dailyFields.style.display = 'block';
+        monthlyFields.style.display = 'none';
     }
+    
+    generateInvoicePreview();
 }
 
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Item Management
 function addNewItemRow() {
-    const container = document.getElementById('itemsContainer');
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td><input type="text" class="form-control form-control-sm item-desc" placeholder="Item description" required></td>
-        <td><input type="number" class="form-control form-control-sm item-qty" value="1" min="1" required></td>
-        <td><input type="number" class="form-control form-control-sm item-price" placeholder="0.00" min="0" step="0.01" required></td>
-        <td>
-            <select class="form-select form-select-sm item-warranty">
-                <option value="no-warranty">No Warranty</option>
-                <option value="7-days">7 Days</option>
-                <option value="15-days">15 Days</option>
-                <option value="1-month">1 Month</option>
-                <option value="3-months">3 Months</option>
-                <option value="6-months">6 Months</option>
-                <option value="1-year">1 Year</option>
-            </select>
-        </td>
-        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)"><i class="fas fa-times"></i></button></td>
+    const itemsContainer = document.getElementById('itemsContainer');
+    const newItemRow = document.createElement('div');
+    newItemRow.className = 'item-row';
+    newItemRow.innerHTML = `
+        <input type="text" class="item-desc" placeholder="Description" required>
+        <input type="number" class="item-qty" placeholder="Qty" min="1" value="1" required>
+        <input type="number" class="item-price" placeholder="Price" min="0" step="0.01" required>
+        <select class="item-warranty">
+            <option value="no-warranty">No Warranty</option>
+            <option value="7-days">7 Days</option>
+            <option value="15-days">15 Days</option>
+            <option value="1-month">1 Month</option>
+            <option value="3-months">3 Months</option>
+            <option value="6-months">6 Months</option>
+            <option value="1-year">1 Year</option>
+            <option value="custom">Custom</option>
+        </select>
+        <input type="text" class="custom-warranty-input" placeholder="Enter warranty details" style="display: none;">
+        <button type="button" class="remove-item"><i class="fas fa-times"></i></button>
     `;
-    container.appendChild(row);
+    itemsContainer.appendChild(newItemRow);
+    newItemRow.querySelector('.item-desc').focus();
 }
 
-function removeItem(button) {
-    const rows = document.querySelectorAll('#itemsContainer tr');
-    if (rows.length > 1) {
-        button.closest('tr').remove();
+function addNewServiceRow() {
+    const servicesContainer = document.getElementById('monthlyServicesContainer');
+    const newServiceRow = document.createElement('div');
+    newServiceRow.className = 'monthly-service-row';
+    newServiceRow.innerHTML = `
+        <input type="text" class="service-desc" placeholder="Service Description" required>
+        <input type="number" class="service-price" placeholder="Monthly Price" min="0" step="0.01" required>
+        <button type="button" class="remove-service"><i class="fas fa-times"></i></button>
+    `;
+    servicesContainer.appendChild(newServiceRow);
+    newServiceRow.querySelector('.service-desc').focus();
+}
+
+function populateMonthFilter() {
+    const monthFilter = document.getElementById('monthFilter');
+    const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    const currentYear = new Date().getFullYear();
+    
+    // Add last 6 months and next 6 months
+    for (let i = -6; i <= 6; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() + i);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const monthName = months[month];
+        const value = `${year}-${(month + 1).toString().padStart(2, '0')}`;
+        
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = `${monthName} ${year}`;
+        monthFilter.appendChild(option);
     }
 }
 
-// Auth Functions
+// Auth functions (same as before)
 function handleAuthStateChange(user) {
     currentUser = user;
+    
     if (user) {
-        document.getElementById('loginBtn').classList.add('d-none');
-        document.getElementById('logoutBtn').classList.remove('d-none');
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'block';
         document.getElementById('userEmail').textContent = user.email;
-        document.getElementById('loginModal').classList.remove('show');
-        document.body.classList.remove('modal-open');
-        document.querySelector('.modal-backdrop')?.remove();
-        loadStats();
+        document.getElementById('invoiceForm').style.display = 'block';
+        document.getElementById('loginPrompt').style.display = 'none';
+        document.getElementById('historyContainer').style.display = 'block';
+        
         loadInvoices();
-        loadBillers();
+        hideLoginModal();
     } else {
-        document.getElementById('loginBtn').classList.remove('d-none');
-        document.getElementById('logoutBtn').classList.add('d-none');
+        document.getElementById('loginBtn').style.display = 'block';
+        document.getElementById('logoutBtn').style.display = 'none';
         document.getElementById('userEmail').textContent = '';
-        showSection('invoice-form');
+        document.getElementById('invoiceForm').style.display = 'none';
+        document.getElementById('loginPrompt').style.display = 'block';
+        document.getElementById('historyContainer').style.display = 'none';
     }
+}
+
+function showLoginModal() {
+    document.getElementById('loginModal').style.display = 'block';
+}
+
+function hideLoginModal() {
+    document.getElementById('loginModal').style.display = 'none';
+    document.getElementById('loginError').style.display = 'none';
 }
 
 async function handleLogin(e) {
     e.preventDefault();
+    
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const errorElement = document.getElementById('loginError');
@@ -160,7 +252,7 @@ async function handleLogin(e) {
         await auth.signInWithEmailAndPassword(email, password);
     } catch (error) {
         errorElement.textContent = error.message;
-        errorElement.classList.remove('d-none');
+        errorElement.style.display = 'block';
     }
 }
 
@@ -168,153 +260,294 @@ function logout() {
     auth.signOut();
 }
 
-// Invoice CRUD Operations
 async function saveInvoice() {
-    if (!validateForm()) return;
+    if (!currentUser) {
+        alert('Please login to save invoices');
+        return;
+    }
     
     const invoiceData = getInvoiceData();
+    
+    if (!invoiceData.customerName) {
+        alert('Please fill in customer name');
+        return;
+    }
+    
+    if (invoiceData.billingCycle === 'daily' && !invoiceData.items.length) {
+        alert('Please add at least one item for daily billing');
+        return;
+    }
+    
+    if (invoiceData.billingCycle === 'monthly' && !invoiceData.monthlyServices.length) {
+        alert('Please add at least one service for monthly billing');
+        return;
+    }
+    
     try {
-        await db.collection('invoices').add({
+        // Ensure all indexed fields are properly set
+        const invoiceDate = invoiceData.invoiceDate;
+        const month = invoiceDate ? invoiceDate.substring(0, 7) : ''; // YYYY-MM
+        const year = invoiceDate ? invoiceDate.substring(0, 4) : '';  // YYYY
+        
+        const invoiceToSave = {
             ...invoiceData,
             userId: currentUser.uid,
-            status: 'unpaid',
+            month: month,
+            year: year,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
         
-        showToast('Invoice saved successfully!', 'success');
-        resetForm();
-        loadStats();
+        // Validate required fields for indexing
+        if (!invoiceToSave.userId) {
+            throw new Error('User ID is required');
+        }
+        if (!invoiceToSave.billingCycle) {
+            throw new Error('Billing cycle is required');
+        }
+        
+        await db.collection('invoices').add(invoiceToSave);
+        
+        alert('Invoice saved successfully!');
+        clearForm();
         loadInvoices();
     } catch (error) {
-        handleFirebaseError(error, 'saving invoice');
+        console.error('Error saving invoice:', error);
+        alert('Error saving invoice: ' + error.message);
     }
 }
 
-async function updateInvoice() {
-    if (!currentEditingInvoice || !validateForm()) return;
+function getInvoiceData() {
+    const billingCycle = document.getElementById('billingCycle').value;
+    const invoiceNumber = document.getElementById('invoiceNumber').value;
+    const invoiceDate = document.getElementById('invoiceDate').value;
+    const customerName = document.getElementById('customerName').value;
+    const customerContact = document.getElementById('customerContact').value;
+    const customerAddress = document.getElementById('customerAddress').value;
+    const notes = document.getElementById('notes').value;
     
-    const invoiceData = getInvoiceData();
-    try {
-        await db.collection('invoices').doc(currentEditingInvoice).update({
-            ...invoiceData,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    let items = [];
+    let monthlyServices = [];
+    let subtotal = 0;
+    
+    if (billingCycle === 'daily') {
+        // Get daily items
+        const itemRows = document.querySelectorAll('.item-row');
+        itemRows.forEach(row => {
+            const description = row.querySelector('.item-desc').value;
+            const quantity = parseFloat(row.querySelector('.item-qty').value) || 0;
+            const price = parseFloat(row.querySelector('.item-price').value) || 0;
+            const warranty = row.querySelector('.item-warranty').value;
+            const customWarranty = row.querySelector('.custom-warranty-input').value;
+            const total = quantity * price;
+            
+            if (description) {
+                items.push({
+                    description,
+                    quantity,
+                    price,
+                    warranty: warranty === 'custom' ? customWarranty : warranty,
+                    total
+                });
+                subtotal += total;
+            }
         });
+    } else {
+        // Get monthly services
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const serviceRows = document.querySelectorAll('.monthly-service-row');
         
-        showToast('Invoice updated successfully!', 'success');
-        resetForm();
-        loadStats();
-        loadInvoices();
-    } catch (error) {
-        showToast('Error updating invoice: ' + error.message, 'error');
+        serviceRows.forEach(row => {
+            const description = row.querySelector('.service-desc').value;
+            const price = parseFloat(row.querySelector('.service-price').value) || 0;
+            
+            if (description) {
+                monthlyServices.push({
+                    description,
+                    price,
+                    total: price
+                });
+                subtotal += price;
+            }
+        });
     }
+    
+    return {
+        billingCycle,
+        invoiceNumber,
+        invoiceDate,
+        customerName,
+        customerContact,
+        customerAddress,
+        notes,
+        items,
+        monthlyServices,
+        startDate: billingCycle === 'monthly' ? document.getElementById('startDate').value : '',
+        endDate: billingCycle === 'monthly' ? document.getElementById('endDate').value : '',
+        subtotal,
+        grandTotal: subtotal,
+        status: 'draft'
+    };
+}
+
+function clearForm() {
+    document.getElementById('invoiceForm').reset();
+    document.getElementById('itemsContainer').innerHTML = '';
+    document.getElementById('monthlyServicesContainer').innerHTML = '';
+    addNewItemRow();
+    addNewServiceRow();
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invoiceDate').value = today;
+    
+    // Set default monthly period
+    const firstDay = new Date();
+    firstDay.setDate(1);
+    const lastDay = new Date();
+    lastDay.setMonth(lastDay.getMonth() + 1);
+    lastDay.setDate(0);
+    
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+    
+    generateInvoicePreview();
 }
 
 async function loadInvoices() {
     if (!currentUser) return;
     
-    const searchTerm = document.getElementById('searchInvoices').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
-    const dateFilter = document.getElementById('dateFilter').value;
+    const invoicesList = document.getElementById('invoicesList');
+    invoicesList.innerHTML = '<p>Loading invoices...</p>';
+    
+    const billingCycleFilter = document.getElementById('billingCycleFilter').value;
+    const monthFilter = document.getElementById('monthFilter').value;
     
     try {
-        let query = db.collection('invoices').where('userId', '==', currentUser.uid);
+        let query = db.collection('invoices');
+        
+        // Build query based on filters - these will use the composite indexes
+        if (billingCycleFilter !== 'all' && monthFilter !== 'all') {
+            // Filter by both billingCycle and month
+            query = query
+                .where('userId', '==', currentUser.uid)
+                .where('billingCycle', '==', billingCycleFilter)
+                .where('month', '==', monthFilter)
+                .orderBy('createdAt', 'desc');
+        } else if (billingCycleFilter !== 'all') {
+            // Filter only by billingCycle
+            query = query
+                .where('userId', '==', currentUser.uid)
+                .where('billingCycle', '==', billingCycleFilter)
+                .orderBy('createdAt', 'desc');
+        } else if (monthFilter !== 'all') {
+            // Filter only by month
+            query = query
+                .where('userId', '==', currentUser.uid)
+                .where('month', '==', monthFilter)
+                .orderBy('createdAt', 'desc');
+        } else {
+            // No filters - just get all user invoices
+            query = query
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc');
+        }
+        
         const snapshot = await query.get();
         
-        let invoices = [];
+        if (snapshot.empty) {
+            invoicesList.innerHTML = '<p>No invoices found. Create your first invoice!</p>';
+            return;
+        }
+        
+        invoicesList.innerHTML = '';
         snapshot.forEach(doc => {
-            invoices.push({ id: doc.id, ...doc.data() });
+            const invoice = { 
+                id: doc.id, 
+                ...doc.data(),
+                // Convert Firestore timestamp to JavaScript Date
+                createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
+            };
+            const invoiceElement = createInvoiceCard(invoice);
+            invoicesList.appendChild(invoiceElement);
         });
         
-        // Apply filters
-        invoices = invoices.filter(invoice => {
-            let match = true;
-            
-            if (searchTerm) {
-                match = match && (
-                    invoice.invoiceNumber?.toLowerCase().includes(searchTerm) ||
-                    invoice.customerName?.toLowerCase().includes(searchTerm)
-                );
-            }
-            
-            if (statusFilter !== 'all') {
-                match = match && invoice.status === statusFilter;
-            }
-            
-            if (dateFilter !== 'all') {
-                const invoiceDate = new Date(invoice.invoiceDate);
-                const today = new Date();
-                
-                switch (dateFilter) {
-                    case 'today':
-                        match = match && invoiceDate.toDateString() === today.toDateString();
-                        break;
-                    case 'week':
-                        const weekAgo = new Date(today.setDate(today.getDate() - 7));
-                        match = match && invoiceDate >= weekAgo;
-                        break;
-                    case 'month':
-                        match = match && invoiceDate.getMonth() === today.getMonth() && 
-                                 invoiceDate.getFullYear() === today.getFullYear();
-                        break;
-                }
-            }
-            
-            return match;
-        });
-        
-        displayInvoicesTable(invoices);
     } catch (error) {
         console.error('Error loading invoices:', error);
-    }
-}
-
-function displayInvoicesTable(invoices) {
-    const tbody = document.getElementById('invoicesTableBody');
-    
-    if (invoices.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">No invoices found</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = invoices.map(invoice => `
-        <tr>
-            <td><strong>${invoice.invoiceNumber || 'N/A'}</strong></td>
-            <td>${new Date(invoice.invoiceDate).toLocaleDateString('en-IN')}</td>
-            <td>${invoice.customerName}</td>
-            <td><strong>₹${invoice.grandTotal?.toFixed(2) || '0.00'}</strong></td>
-            <td><span class="status-badge status-${invoice.status || 'unpaid'}">${invoice.status || 'unpaid'}</span></td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="viewInvoice('${invoice.id}')" title="View">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-warning" onclick="editInvoice('${invoice.id}')" title="Edit">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteInvoice('${invoice.id}')" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-async function viewInvoice(invoiceId) {
-    const doc = await db.collection('invoices').doc(invoiceId).get();
-    if (doc.exists) {
-        const invoice = doc.data();
-        generateInvoicePreview(invoice);
-        new bootstrap.Modal(document.getElementById('previewModal')).show();
-    }
-}
-
-async function editInvoice(invoiceId) {
-    const doc = await db.collection('invoices').doc(invoiceId).get();
-    if (doc.exists) {
-        const invoice = doc.data();
-        currentEditingInvoice = invoiceId;
         
-        // Populate form
+        // Show specific error message with index creation link
+        if (error.code === 'failed-precondition') {
+            invoicesList.innerHTML = `
+                <div class="error-message">
+                    <p><strong>Index Required:</strong> Please create the Firestore composite index.</p>
+                    <p>Error: ${error.message}</p>
+                    <p>Click the link in the browser console to create the index automatically, 
+                    or create it manually in Firebase Console under Firestore > Indexes.</p>
+                </div>
+            `;
+        } else {
+            invoicesList.innerHTML = '<p>Error loading invoices: ' + error.message + '</p>';
+        }
+    }
+}
+
+function createInvoiceCard(invoice) {
+    const card = document.createElement('div');
+    card.className = 'invoice-card';
+    
+    const formattedDate = invoice.invoiceDate ? 
+        new Date(invoice.invoiceDate).toLocaleDateString('en-IN') : 
+        'No date';
+    
+    const badgeClass = invoice.billingCycle === 'monthly' ? 'badge-monthly' : 'badge-daily';
+    const badgeText = invoice.billingCycle === 'monthly' ? 'Monthly' : 'Daily';
+    
+    let periodInfo = '';
+    if (invoice.billingCycle === 'monthly' && invoice.startDate && invoice.endDate) {
+        const start = new Date(invoice.startDate).toLocaleDateString('en-IN');
+        const end = new Date(invoice.endDate).toLocaleDateString('en-IN');
+        periodInfo = `<div class="period-info">Period: ${start} to ${end}</div>`;
+    }
+    
+    card.innerHTML = `
+        <div class="invoice-card-header">
+            <span class="invoice-number">${invoice.invoiceNumber || 'No number'}</span>
+            <span class="billing-cycle-badge ${badgeClass}">${badgeText}</span>
+            <span class="invoice-date">${formattedDate}</span>
+        </div>
+        <div class="invoice-customer">${invoice.customerName || 'No customer'}</div>
+        ${periodInfo}
+        <div class="invoice-total">₹${invoice.grandTotal?.toFixed(2) || '0.00'}</div>
+        <div class="invoice-actions">
+            <button class="btn-small btn-edit" onclick="loadInvoiceForEdit('${invoice.id}')">
+                <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="btn-small btn-delete" onclick="deleteInvoice('${invoice.id}')">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+    `;
+    
+    return card;
+}
+
+async function loadInvoiceForEdit(invoiceId) {
+    try {
+        const doc = await db.collection('invoices').doc(invoiceId).get();
+        
+        if (!doc.exists) {
+            alert('Invoice not found');
+            return;
+        }
+        
+        const invoice = doc.data();
+        
+        // Set billing cycle first
+        document.getElementById('billingCycle').value = invoice.billingCycle || 'daily';
+        handleBillingCycleChange();
+        
+        // Populate common fields
         document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
         document.getElementById('invoiceDate').value = invoice.invoiceDate || '';
         document.getElementById('customerName').value = invoice.customerName || '';
@@ -322,340 +555,81 @@ async function editInvoice(invoiceId) {
         document.getElementById('customerAddress').value = invoice.customerAddress || '';
         document.getElementById('notes').value = invoice.notes || '';
         
-        // Populate items
-        document.getElementById('itemsContainer').innerHTML = '';
-        if (invoice.items && invoice.items.length > 0) {
-            invoice.items.forEach(item => {
-                addNewItemRow();
-                const rows = document.querySelectorAll('#itemsContainer tr');
-                const lastRow = rows[rows.length - 1];
-                
-                lastRow.querySelector('.item-desc').value = item.description || '';
-                lastRow.querySelector('.item-qty').value = item.quantity || 1;
-                lastRow.querySelector('.item-price').value = item.price || 0;
-                lastRow.querySelector('.item-warranty').value = item.warranty || 'no-warranty';
-            });
+        if (invoice.billingCycle === 'monthly') {
+            // Populate monthly billing fields
+            document.getElementById('startDate').value = invoice.startDate || '';
+            document.getElementById('endDate').value = invoice.endDate || '';
+            
+            // Clear and populate services
+            document.getElementById('monthlyServicesContainer').innerHTML = '';
+            if (invoice.monthlyServices && invoice.monthlyServices.length > 0) {
+                invoice.monthlyServices.forEach(service => {
+                    addNewServiceRow();
+                    const rows = document.querySelectorAll('.monthly-service-row');
+                    const currentRow = rows[rows.length - 1];
+                    
+                    currentRow.querySelector('.service-desc').value = service.description || '';
+                    currentRow.querySelector('.service-price').value = service.price || 0;
+                });
+            } else {
+                addNewServiceRow();
+            }
         } else {
-            addNewItemRow();
+            // Clear and populate daily items
+            document.getElementById('itemsContainer').innerHTML = '';
+            if (invoice.items && invoice.items.length > 0) {
+                invoice.items.forEach((item, index) => {
+                    addNewItemRow();
+                    const rows = document.querySelectorAll('.item-row');
+                    const currentRow = rows[rows.length - 1];
+                    
+                    currentRow.querySelector('.item-desc').value = item.description || '';
+                    currentRow.querySelector('.item-qty').value = item.quantity || 1;
+                    currentRow.querySelector('.item-price').value = item.price || 0;
+                    
+                    if (item.warranty && item.warranty !== 'no-warranty') {
+                        if (['7-days', '15-days', '1-month', '3-months', '6-months', '1-year'].includes(item.warranty)) {
+                            currentRow.querySelector('.item-warranty').value = item.warranty;
+                        } else {
+                            currentRow.querySelector('.item-warranty').value = 'custom';
+                            currentRow.querySelector('.custom-warranty-input').value = item.warranty;
+                            currentRow.querySelector('.custom-warranty-input').style.display = 'block';
+                        }
+                    }
+                });
+            } else {
+                addNewItemRow();
+            }
         }
         
-        document.getElementById('saveInvoiceBtn').classList.add('d-none');
-        document.getElementById('updateInvoiceBtn').classList.remove('d-none');
-        showSection('invoice-form');
-        
         generateInvoicePreview();
+        document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
+        
+    } catch (error) {
+        console.error('Error loading invoice:', error);
+        alert('Error loading invoice: ' + error.message);
     }
 }
 
 async function deleteInvoice(invoiceId) {
-    if (confirm('Are you sure you want to delete this invoice?')) {
-        try {
-            await db.collection('invoices').doc(invoiceId).delete();
-            showToast('Invoice deleted successfully!', 'success');
-            loadInvoices();
-            loadStats();
-        } catch (error) {
-            showToast('Error deleting invoice: ' + error.message, 'error');
-        }
-    }
-}
-
-// Stats and Analytics
-async function loadStats() {
-    if (!currentUser) return;
-    
-    try {
-        const snapshot = await db.collection('invoices')
-            .where('userId', '==', currentUser.uid)
-            .get();
-        
-        const today = new Date();
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        
-        let todayIncome = 0;
-        let weekIncome = 0;
-        let monthIncome = 0;
-        let totalIncome = 0;
-        
-        snapshot.forEach(doc => {
-            const invoice = doc.data();
-            const invoiceDate = new Date(invoice.invoiceDate);
-            const amount = invoice.grandTotal || 0;
-            
-            totalIncome += amount;
-            
-            if (invoiceDate >= todayStart) {
-                todayIncome += amount;
-            }
-            if (invoiceDate >= weekStart) {
-                weekIncome += amount;
-            }
-            if (invoiceDate >= monthStart) {
-                monthIncome += amount;
-            }
-        });
-        
-        document.getElementById('todayIncome').textContent = '₹' + todayIncome.toFixed(2);
-        document.getElementById('weekIncome').textContent = '₹' + weekIncome.toFixed(2);
-        document.getElementById('monthIncome').textContent = '₹' + monthIncome.toFixed(2);
-        
-    } catch (error) {
-        console.error('Error loading stats:', error);
-    }
-}
-
-// Biller Management
-async function loadBillers() {
-    if (!currentUser) {
-        console.log('No user logged in, skipping billers load');
+    if (!confirm('Are you sure you want to delete this invoice?')) {
         return;
     }
     
     try {
-        const snapshot = await db.collection('billers')
-            .where('userId', '==', currentUser.uid)
-            .get();
-        
-        const select = document.getElementById('billerSelect');
-        const list = document.getElementById('billersList');
-        
-        select.innerHTML = '<option value="">-- Select Biller --</option>';
-        list.innerHTML = '';
-        
-        if (snapshot.empty) {
-            list.innerHTML = '<p class="text-muted">No billers saved yet. Add your first biller above.</p>';
-            return;
-        }
-        
-        snapshot.forEach(doc => {
-            const biller = doc.data();
-            const option = document.createElement('option');
-            option.value = doc.id;
-            option.textContent = biller.name;
-            select.appendChild(option);
-            
-            const billerElement = document.createElement('div');
-            billerElement.className = 'd-flex justify-content-between align-items-center mb-2 p-2 border rounded';
-            billerElement.innerHTML = `
-                <div>
-                    <strong>${biller.name}</strong>
-                    <br><small class="text-muted">${biller.email || 'No email'}</small>
-                </div>
-                <div>
-                    <button class="btn btn-sm btn-outline-warning me-1" onclick="editBiller('${doc.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteBiller('${doc.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `;
-            list.appendChild(billerElement);
-        });
-        
+        await db.collection('invoices').doc(invoiceId).delete();
+        loadInvoices();
     } catch (error) {
-        console.error('Error loading billers:', error);
-        // Show user-friendly message
-        if (error.code === 'permission-denied') {
-            showToast('Please refresh the page and login again to access billers', 'error');
-        } else {
-            showToast('Error loading billers: ' + error.message, 'error');
-        }
+        console.error('Error deleting invoice:', error);
+        alert('Error deleting invoice: ' + error.message);
     }
 }
 
-async function loadBillerDetails() {
-    const billerId = document.getElementById('billerSelect').value;
-    if (!billerId) return;
+function generateInvoicePreview() {
+    const billingCycle = document.getElementById('billingCycle').value;
+    const invoiceData = getInvoiceData();
     
-    try {
-        const doc = await db.collection('billers').doc(billerId).get();
-        if (doc.exists) {
-            const biller = doc.data();
-            // Auto-fill customer details if needed
-            document.getElementById('customerName').value = biller.name || '';
-            document.getElementById('customerContact').value = biller.phone || '';
-            document.getElementById('customerAddress').value = biller.address || '';
-        }
-    } catch (error) {
-        console.error('Error loading biller details:', error);
-    }
-}
-
-async function saveBiller(e) {
-    e.preventDefault();
-    if (!currentUser) {
-        showToast('Please login to save billers', 'error');
-        return;
-    }
-    
-    const billerId = document.getElementById('billerId').value;
-    const billerData = {
-        name: document.getElementById('billerName').value.trim(),
-        email: document.getElementById('billerEmail').value.trim(),
-        phone: document.getElementById('billerPhone').value.trim(),
-        address: document.getElementById('billerAddress').value.trim(),
-        userId: currentUser.uid,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    
-    // Validate required fields
-    if (!billerData.name) {
-        showToast('Biller name is required', 'error');
-        return;
-    }
-    
-    try {
-        if (billerId) {
-            // Update existing biller
-            await db.collection('billers').doc(billerId).update(billerData);
-            showToast('Biller updated successfully!', 'success');
-        } else {
-            // Create new biller
-            billerData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            await db.collection('billers').add(billerData);
-            showToast('Biller saved successfully!', 'success');
-        }
-        
-        // Reset form and refresh list
-        document.getElementById('billerForm').reset();
-        document.getElementById('billerId').value = '';
-        bootstrap.Modal.getInstance(document.getElementById('billerModal')).hide();
-        loadBillers();
-        
-    } catch (error) {
-        console.error('Error saving biller:', error);
-        handleFirebaseError(error, 'saving biller');
-    }
-}
-
-async function editBiller(billerId) {
-    const doc = await db.collection('billers').doc(billerId).get();
-    if (doc.exists) {
-        const biller = doc.data();
-        document.getElementById('billerId').value = billerId;
-        document.getElementById('billerName').value = biller.name;
-        document.getElementById('billerEmail').value = biller.email || '';
-        document.getElementById('billerPhone').value = biller.phone || '';
-        document.getElementById('billerAddress').value = biller.address || '';
-        
-        new bootstrap.Modal(document.getElementById('billerModal')).show();
-    }
-}
-
-async function deleteBiller(billerId) {
-    if (confirm('Are you sure you want to delete this biller?')) {
-        try {
-            await db.collection('billers').doc(billerId).delete();
-            showToast('Biller deleted successfully!', 'success');
-            loadBillers();
-        } catch (error) {
-            showToast('Error deleting biller: ' + error.message, 'error');
-        }
-    }
-}
-
-// Utility Functions
-function getInvoiceData() {
-    const items = [];
-    let subtotal = 0;
-    
-    document.querySelectorAll('#itemsContainer tr').forEach(row => {
-        const description = row.querySelector('.item-desc').value;
-        const quantity = parseFloat(row.querySelector('.item-qty').value) || 0;
-        const price = parseFloat(row.querySelector('.item-price').value) || 0;
-        const warranty = row.querySelector('.item-warranty').value;
-        const total = quantity * price;
-        
-        if (description && description.trim() !== '') {
-            items.push({ description, quantity, price, warranty, total });
-            subtotal += total;
-        }
-    });
-    
-    // Ensure we have at least one valid item
-    if (items.length === 0) {
-        items.push({ 
-            description: 'Sample Item', 
-            quantity: 1, 
-            price: 0, 
-            warranty: 'no-warranty', 
-            total: 0 
-        });
-    }
-    
-    return {
-        invoiceNumber: document.getElementById('invoiceNumber').value || 'INV-001',
-        invoiceDate: document.getElementById('invoiceDate').value || new Date().toISOString().split('T')[0],
-        customerName: document.getElementById('customerName').value || 'Customer Name',
-        customerContact: document.getElementById('customerContact').value || '',
-        customerAddress: document.getElementById('customerAddress').value || '',
-        notes: document.getElementById('notes').value || '',
-        items,
-        subtotal,
-        grandTotal: subtotal,
-        billingCycle: 'daily',
-        monthlyServices: []
-    };
-}
-
-function validateForm() {
-    const customerName = document.getElementById('customerName').value;
-    const items = document.querySelectorAll('#itemsContainer tr');
-    let hasValidItems = false;
-    
-    items.forEach(row => {
-        const description = row.querySelector('.item-desc').value;
-        if (description) hasValidItems = true;
-    });
-    
-    if (!customerName) {
-        showToast('Please enter customer name', 'error');
-        return false;
-    }
-    
-    if (!hasValidItems) {
-        showToast('Please add at least one item', 'error');
-        return false;
-    }
-    
-    return true;
-}
-
-function resetForm() {
-    document.getElementById('invoiceForm').reset();
-    document.getElementById('itemsContainer').innerHTML = '';
-    document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('saveInvoiceBtn').classList.remove('d-none');
-    document.getElementById('updateInvoiceBtn').classList.add('d-none');
-    currentEditingInvoice = null;
-    addNewItemRow();
-    
-    // Clear preview instead of generating with empty data
-    document.getElementById('invoicePreview').innerHTML = '<p class="text-muted">Preview will appear here after filling the form</p>';
-}
-
-function showToast(message, type = 'info') {
-    // Simple toast implementation
-    const toast = document.createElement('div');
-    toast.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
-    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    toast.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 5000);
-}
-
-function generateInvoicePreview(invoiceData = null) {
-    const data = invoiceData || getInvoiceData();
-    const invoiceHTML = createInvoiceHTML(data);
+    const invoiceHTML = createInvoiceHTML(invoiceData);
     const previewContainer = document.getElementById('invoicePreview');
     previewContainer.innerHTML = invoiceHTML;
 }
@@ -669,120 +643,143 @@ function createInvoiceHTML(invoiceData) {
         }) : '';
     
     let itemsHTML = '';
+    let periodInfo = '';
     
-    // Always use the daily billing template since we don't have monthly billing in form
-    itemsHTML = `
-        <table class="invoice-table">
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th>Qty</th>
-                    <th>Price</th>
-                    <th>Warranty</th>
-                    <th class="text-right">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${invoiceData.items.map(item => `
+    if (invoiceData.billingCycle === 'monthly') {
+        // Monthly billing template
+        const startDate = invoiceData.startDate ? 
+            new Date(invoiceData.startDate).toLocaleDateString('en-IN') : '';
+        const endDate = invoiceData.endDate ? 
+            new Date(invoiceData.endDate).toLocaleDateString('en-IN') : '';
+        
+        periodInfo = `
+            <div class="invoice-period">
+                <strong>Billing Period:</strong> ${startDate} to ${endDate}
+            </div>
+        `;
+        
+        itemsHTML = `
+            <table class="invoice-table">
+                <thead>
                     <tr>
-                        <td>${item.description}</td>
-                        <td>${item.quantity}</td>
-                        <td>₹${item.price.toFixed(2)}</td>
-                        <td>
-                            ${item.warranty && item.warranty !== 'no-warranty' ? 
-                                `<span class="warranty-badge">
-                                    ${item.warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
-                                </span>` : 'No Warranty'}
-                        </td>
-                        <td class="text-right">₹${item.total.toFixed(2)}</td>
+                        <th>Service Description</th>
+                        <th class="text-right">Monthly Amount</th>
                     </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
+                </thead>
+                <tbody>
+                    ${invoiceData.monthlyServices.map(service => `
+                        <tr>
+                            <td>${service.description}</td>
+                            <td class="text-right">₹${service.price.toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } else {
+        // Daily billing template
+        itemsHTML = `
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${invoiceData.items.map(item => `
+                        <tr>
+                            <td>
+                                ${item.description}
+                                ${item.warranty && item.warranty !== 'no-warranty' ? 
+                                    `<span class="warranty-badge">
+                                        Warranty: ${item.warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
+                                    </span>` : ''}
+                            </td>
+                            <td>${item.quantity}</td>
+                            <td>₹${item.price.toFixed(2)}</td>
+                            <td class="text-right">₹${item.total.toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
     
     return `
         <div class="invoice-template">
             <div class="invoice-header">
-                <div class="row">
-                    <div class="col-6">
-                        <div class="invoice-title">INVOICE</div>
-                    </div>
-                    <div class="col-6 text-end">
-                        <div class="invoice-number"><strong>Invoice #:</strong> ${invoiceData.invoiceNumber || '---'}</div>
-                        <div class="invoice-date"><strong>Date:</strong> ${formattedDate}</div>
-                    </div>
+                <div class="invoice-title">INVOICE</div>
+                <div class="invoice-meta">
+                    <div class="invoice-number">Invoice #${invoiceData.invoiceNumber || '---'}</div>
+                    <div class="invoice-date">Date: ${formattedDate}</div>
+                    <div class="billing-cycle">${invoiceData.billingCycle === 'monthly' ? 'Monthly Billing' : 'One-Time Billing'}</div>
                 </div>
             </div>
             
-            <div class="row mt-4">
-                <div class="col-6">
-                    <div class="card">
-                        <div class="card-header bg-light">
-                            <strong>From:</strong>
-                        </div>
-                        <div class="card-body">
-                            <strong>MNR SoftTech Solutions</strong><br>
-                            Computer Software & Hardware Services<br>
-                            Email: mnrdeveloper11@gmail.com<br>
-                            Phone: +91 7416006394
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card">
-                        <div class="card-header bg-light">
-                            <strong>Bill To:</strong>
-                        </div>
-                        <div class="card-body">
-                            <strong>${invoiceData.customerName || 'Customer Name'}</strong><br>
-                            ${invoiceData.customerContact ? 'Phone: ' + invoiceData.customerContact + '<br>' : ''}
-                            ${invoiceData.customerAddress || 'Address not provided'}
-                        </div>
-                    </div>
+            <div class="invoice-company">
+                <div class="company-name">MNR SoftTech Solutions</div>
+                <div class="company-details">
+                    Computer Software & Hardware Services<br>
+                    Contact: Maniteja (mnrdeveloper11@gmail.com)<br>
+                    Phone: +91 7416006394 (Whatsapp only)
                 </div>
             </div>
             
-            <div class="mt-4">
-                ${itemsHTML}
-            </div>
-            
-            <div class="row mt-4">
-                <div class="col-8"></div>
-                <div class="col-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <strong>Subtotal:</strong>
-                                <span>₹${invoiceData.subtotal.toFixed(2)}</span>
-                            </div>
-                            <div class="d-flex justify-content-between mt-2">
-                                <strong>Total Amount:</strong>
-                                <span class="invoice-grand-total">₹${invoiceData.grandTotal.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
+            <div class="invoice-customer">
+                <div class="customer-title">BILL TO:</div>
+                <div class="customer-details">
+                    ${invoiceData.customerName || 'Customer Name'}<br>
+                    ${invoiceData.customerContact ? 'Phone: ' + invoiceData.customerContact + '<br>' : ''}
+                    ${invoiceData.customerAddress || 'Address not provided'}
                 </div>
             </div>
+            
+            ${periodInfo}
+            ${itemsHTML}
+            
+            <div class="invoice-totals">
+                <div class="invoice-totals-row invoice-grand-total">
+                    <span class="invoice-totals-label">Total Amount:</span>
+                    <span class="invoice-totals-value">₹${invoiceData.grandTotal.toFixed(2)}</span>
+                </div>
+            </div>
+            
+            ${invoiceData.billingCycle === 'daily' ? `
+                <div class="warranty-disclaimer">
+                    <h3>Warranty Terms</h3>
+                    <p>Warranty covers manufacturing defects only. Does not cover:</p>
+                    <ul>
+                        <li>Physical damage or liquid damage</li>
+                        <li>Unauthorized repairs or modifications</li>
+                        <li>Software issues not related to hardware</li>
+                    </ul>
+                    <p>Original invoice required for all warranty claims.</p>
+                </div>
+            ` : `
+                <div class="warranty-disclaimer">
+                    <h3>Monthly Service Terms</h3>
+                    <p>This is a recurring monthly service invoice. Services are billed in advance.</p>
+                    <ul>
+                        <li>Payment due upon receipt</li>
+                        <li>Late payments may incur fees</li>
+                        <li>Services may be suspended for non-payment</li>
+                    </ul>
+                </div>
+            `}
             
             ${invoiceData.notes ? `
-                <div class="mt-4">
-                    <div class="card">
-                        <div class="card-header bg-light">
-                            <strong>Notes:</strong>
-                        </div>
-                        <div class="card-body">
-                            ${invoiceData.notes}
-                        </div>
-                    </div>
+                <div class="invoice-notes">
+                    <div class="invoice-notes-title">Notes:</div>
+                    <div class="invoice-notes-content">${invoiceData.notes}</div>
                 </div>
             ` : ''}
             
-            <div class="mt-5 pt-4 border-top text-center">
-                <p class="text-muted">
-                    Thank you for your business!<br>
-                    <strong>MNR SoftTech Solutions</strong>
-                </p>
+            <div style="margin-top: 3rem; text-align: center; color: #666; font-size: 0.9rem;">
+                Thank you for your business!<br>
+                MNR SoftTech Solutions
             </div>
         </div>
     `;
@@ -873,97 +870,4 @@ function printInvoice() {
         `);
         printWindow.document.close();
     }, 100);
-}
-
-function showPreview() {
-    if (!validateForm()) {
-        showToast('Please fill in all required fields before previewing', 'error');
-        return;
-    }
-    
-    generateInvoicePreview();
-    new bootstrap.Modal(document.getElementById('previewModal')).show();
-}
-
-// Add this utility function for better error handling
-function handleFirebaseError(error, operation) {
-    console.error(`Error during ${operation}:`, error);
-    let message = `Error ${operation}: `;
-    
-    switch (error.code) {
-        case 'permission-denied':
-            message += 'You do not have permission to perform this operation.';
-            break;
-        case 'unauthenticated':
-            message += 'Please login to continue.';
-            break;
-        case 'not-found':
-            message += 'Requested data not found.';
-            break;
-        default:
-            message += error.message;
-    }
-    
-    showToast(message, 'error');
-}
-
-async function updateInvoice() {
-    if (!currentEditingInvoice || !validateForm()) return;
-    
-    const invoiceData = getInvoiceData();
-    try {
-        await db.collection('invoices').doc(currentEditingInvoice).update({
-            ...invoiceData,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        showToast('Invoice updated successfully!', 'success');
-        resetForm();
-        loadStats();
-        loadInvoices();
-    } catch (error) {
-        handleFirebaseError(error, 'updating invoice');
-    }
-}
-
-async function loadStats() {
-    if (!currentUser) return;
-    
-    try {
-        const snapshot = await db.collection('invoices')
-            .where('userId', '==', currentUser.uid)
-            .get();
-        
-        const today = new Date();
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        
-        let todayIncome = 0;
-        let weekIncome = 0;
-        let monthIncome = 0;
-        
-        snapshot.forEach(doc => {
-            const invoice = doc.data();
-            const invoiceDate = new Date(invoice.invoiceDate);
-            const amount = invoice.grandTotal || 0;
-            
-            if (invoiceDate >= todayStart) {
-                todayIncome += amount;
-            }
-            if (invoiceDate >= weekStart) {
-                weekIncome += amount;
-            }
-            if (invoiceDate >= monthStart) {
-                monthIncome += amount;
-            }
-        });
-        
-        document.getElementById('todayIncome').textContent = '₹' + todayIncome.toFixed(2);
-        document.getElementById('weekIncome').textContent = '₹' + weekIncome.toFixed(2);
-        document.getElementById('monthIncome').textContent = '₹' + monthIncome.toFixed(2);
-        
-    } catch (error) {
-        console.error('Error loading stats:', error);
-    }
 }
