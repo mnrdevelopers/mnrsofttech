@@ -223,8 +223,35 @@ async function loadInvoicesFromFirebase() {
         snapshot.forEach(doc => {
             const invoice = doc.data();
             
-            // Robust date formatting with multiple fallbacks
-            let displayDate = this.formatInvoiceDate(invoice);
+            // Simple and safe date formatting
+            let displayDate = 'Date not available';
+            try {
+                // Try createdAt first (Firestore timestamp)
+                if (invoice.createdAt) {
+                    const date = new Date(invoice.createdAt);
+                    if (!isNaN(date.getTime())) {
+                        displayDate = date.toLocaleDateString('en-IN', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                    }
+                }
+                // If createdAt fails, try invoiceDate
+                else if (invoice.invoiceDate) {
+                    const date = new Date(invoice.invoiceDate);
+                    if (!isNaN(date.getTime())) {
+                        displayDate = date.toLocaleDateString('en-IN', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.warn('Date formatting error:', error);
+                displayDate = 'Invalid Date';
+            }
             
             // Safe total amount
             const totalAmount = invoice.grandTotal || invoice.subtotal || 0;
@@ -488,7 +515,7 @@ function generateInvoicePreview() {
         </div>
     `;
     
-   // Update the preview
+    // Update the preview
     const previewContainer = document.getElementById('invoicePreview');
     if (previewContainer) {
         previewContainer.innerHTML = invoiceHTML;
