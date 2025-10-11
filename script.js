@@ -327,40 +327,67 @@ document.addEventListener('DOMContentLoaded', function() {
         invoicePreview.innerHTML = invoiceHtml;
     }
     
-    function saveInvoice() {
-        if (!currentUser) {
-            showAlert('Please log in to save invoices', 'danger');
-            return;
-        }
-        
-        const invoiceData = getInvoiceData();
-        
-        // Validate required fields
-        if (!invoiceData.invoiceNumber || !invoiceData.customerName || invoiceData.items.length === 0) {
-            showAlert('Please fill in all required fields and add at least one item', 'danger');
-            return;
-        }
-        
-        showLoading(true);
-        
-        // Add user ID and timestamp
-        invoiceData.userId = currentUser.uid;
-        invoiceData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        
-        // Save to Firestore
-        db.collection('invoices').add(invoiceData)
-            .then((docRef) => {
-                showLoading(false);
-                showAlert('Invoice saved successfully!', 'success');
-                loadTodayInvoices(currentUser.uid);
-                generateInvoiceNumber(); // Generate new invoice number for next invoice
-            })
-            .catch((error) => {
-                showLoading(false);
-                console.error('Error saving invoice:', error);
-                showAlert('Error saving invoice. Please try again.', 'danger');
-            });
+  function saveInvoice() {
+    if (!currentUser) {
+        showAlert('Please log in to save invoices', 'danger');
+        return;
     }
+    
+    const invoiceData = getInvoiceData();
+    
+    // Validate required fields
+    if (!invoiceData.invoiceNumber || !invoiceData.customerName || invoiceData.items.length === 0) {
+        showAlert('Please fill in all required fields and add at least one item', 'danger');
+        return;
+    }
+    
+    showLoading(true);
+    
+    // Add user ID and timestamp
+    invoiceData.userId = currentUser.uid;
+    invoiceData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    invoiceData.date = new Date(invoiceData.invoiceDate); // Add date field for querying
+    
+    // Save to Firestore
+    db.collection('invoices').add(invoiceData)
+        .then((docRef) => {
+            showLoading(false);
+            showAlert('Invoice saved successfully!', 'success');
+            loadTodayInvoices(currentUser.uid);
+            generateInvoiceNumber(); // Generate new invoice number for next invoice
+            
+            // Clear form for next invoice
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerContact').value = '';
+            document.getElementById('customerEmail').value = '';
+            document.getElementById('customerAddress').value = '';
+            document.getElementById('notes').value = '';
+            
+            // Clear items but keep one empty row
+            const itemRows = document.querySelectorAll('.item-row');
+            itemRows.forEach((row, index) => {
+                if (index > 0) row.remove();
+            });
+            
+            // Clear first row
+            const firstRow = document.querySelector('.item-row');
+            firstRow.querySelector('.item-desc').value = '';
+            firstRow.querySelector('.item-qty').value = '1';
+            firstRow.querySelector('.item-price').value = '';
+            firstRow.querySelector('.item-warranty').value = 'no-warranty';
+            
+            generatePreview();
+        })
+        .catch((error) => {
+            showLoading(false);
+            console.error('Error saving invoice:', error);
+            if (error.code === 'permission-denied') {
+                showAlert('Permission denied. Please check your Firebase security rules.', 'danger');
+            } else {
+                showAlert('Error saving invoice. Please try again.', 'danger');
+            }
+        });
+}
     
     function downloadPdf() {
         const invoiceElement = invoicePreview.querySelector('.invoice-template');
