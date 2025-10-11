@@ -1,3 +1,4 @@
+// Firebase configuration - REPLACE WITH YOUR ACTUAL CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
   authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
@@ -13,212 +14,145 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Global Variables
+// Current user state
 let currentUser = null;
-let invoices = [];
-let currentEditingInvoice = null;
 
-// DOM Elements
-const loginBtn = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const userEmail = document.getElementById('userEmail');
-const loginModal = document.getElementById('loginModal');
-const loginForm = document.getElementById('loginForm');
-const loginError = document.getElementById('loginError');
-const navBtns = document.querySelectorAll('.nav-btn');
-const tabContents = document.querySelectorAll('.tab-content');
-const invoiceForm = document.getElementById('invoiceForm');
-const loginPrompt = document.getElementById('loginPrompt');
-
-// Initialize Application
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
-    setupEventListeners();
-    updateCurrentYear();
 });
 
 function initializeApp() {
-    // Check authentication state
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            currentUser = user;
-            userEmail.textContent = user.email;
-            loginBtn.style.display = 'none';
-            logoutBtn.style.display = 'flex';
-            invoiceForm.style.display = 'block';
-            loginPrompt.style.display = 'none';
-            loadInvoices();
-            loadBillerDetails();
-            loadStatistics();
-        } else {
-            currentUser = null;
-            userEmail.textContent = '';
-            loginBtn.style.display = 'flex';
-            logoutBtn.style.display = 'none';
-            invoiceForm.style.display = 'none';
-            loginPrompt.style.display = 'block';
-        }
-    });
+    // Set current year in footer
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invoiceDate').value = today;
+    
+    // Set default monthly period (current month)
+    const firstDay = new Date();
+    firstDay.setDate(1);
+    const lastDay = new Date();
+    lastDay.setMonth(lastDay.getMonth() + 1);
+    lastDay.setDate(0);
+    
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+    
+    // Populate month filter
+    populateMonthFilter();
+    
+    // Initialize auth state listener
+    auth.onAuthStateChanged(handleAuthStateChange);
+    
+    // Setup event listeners
+    setupEventListeners();
 }
 
 function setupEventListeners() {
-    // Navigation
-    navBtns.forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
-
-    // Auth
-    loginBtn.addEventListener('click', showLoginModal);
-    logoutBtn.addEventListener('click', handleLogout);
-    loginForm.addEventListener('submit', handleLogin);
-
-    // Modal close buttons
-    document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', () => {
-            closeBtn.closest('.modal').style.display = 'none';
-        });
-    });
-
-    // Invoice Form
-    document.getElementById('billingCycle').addEventListener('change', toggleBillingPeriod);
-    document.getElementById('addItem').addEventListener('click', addNewItem);
+    // Billing cycle change
+    document.getElementById('billingCycle').addEventListener('change', handleBillingCycleChange);
+    
+    // Auth buttons
+    document.getElementById('loginBtn').addEventListener('click', showLoginModal);
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    
+    // Modal
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    document.querySelector('.close').addEventListener('click', hideLoginModal);
+    
+    // Invoice buttons
+    document.getElementById('addItem').addEventListener('click', addNewItemRow);
+    document.getElementById('addService').addEventListener('click', addNewServiceRow);
     document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
-    document.getElementById('previewBtn').addEventListener('click', previewInvoice);
-    document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
-    document.getElementById('downloadJpgBtn').addEventListener('click', downloadJpg);
+    document.getElementById('previewBtn').addEventListener('click', generateInvoicePreview);
+    document.getElementById('downloadPdfBtn').addEventListener('click', downloadAsPDF);
+    document.getElementById('downloadJpgBtn').addEventListener('click', downloadAsJPEG);
     document.getElementById('printBtn').addEventListener('click', printInvoice);
-
-    // Real-time calculations
-    document.addEventListener('input', function(e) {
-        if (e.target.classList.contains('item-qty') || 
-            e.target.classList.contains('item-price') ||
-            e.target.id === 'taxPercent') {
-            calculateTotals();
+    
+    // Filter controls
+    document.getElementById('billingCycleFilter').addEventListener('change', loadInvoices);
+    document.getElementById('monthFilter').addEventListener('change', loadInvoices);
+    
+    // Remove item button event delegation
+    document.getElementById('itemsContainer').addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-item') || e.target.closest('.remove-item')) {
+            const itemRow = e.target.closest('.item-row');
+            if (document.querySelectorAll('.item-row').length > 1) {
+                itemRow.remove();
+            } else {
+                itemRow.querySelectorAll('input').forEach(input => input.value = '');
+                itemRow.querySelector('.item-qty').value = '1';
+                itemRow.querySelector('.item-warranty').value = 'no-warranty';
+                itemRow.querySelector('.custom-warranty-input').style.display = 'none';
+            }
+            generateInvoicePreview();
         }
-        
+    });
+    
+    // Remove service button event delegation
+    document.getElementById('monthlyServicesContainer').addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-service') || e.target.closest('.remove-service')) {
+            const serviceRow = e.target.closest('.monthly-service-row');
+            if (document.querySelectorAll('.monthly-service-row').length > 1) {
+                serviceRow.remove();
+            } else {
+                serviceRow.querySelectorAll('input').forEach(input => input.value = '');
+            }
+            generateInvoicePreview();
+        }
+    });
+    
+    // Warranty selection change handler
+    document.getElementById('itemsContainer').addEventListener('change', function(e) {
         if (e.target.classList.contains('item-warranty')) {
-            toggleCustomWarranty(e.target);
+            const customWarrantyInput = e.target.closest('.item-row').querySelector('.custom-warranty-input');
+            if (e.target.value === 'custom') {
+                customWarrantyInput.style.display = 'block';
+            } else {
+                customWarrantyInput.style.display = 'none';
+            }
+            generateInvoicePreview();
         }
     });
-
-    // Invoices Tab
-    document.getElementById('billingCycleFilter').addEventListener('change', filterInvoices);
-    document.getElementById('statusFilter').addEventListener('change', filterInvoices);
-    document.getElementById('monthFilter').addEventListener('change', filterInvoices);
-    document.getElementById('exportBtn').addEventListener('click', exportInvoices);
-
-    // Statistics Tab
-    document.getElementById('refreshStats').addEventListener('click', loadStatistics);
-    document.getElementById('statsPeriod').addEventListener('change', loadStatistics);
-
-    // Biller Details
-    document.getElementById('billerForm').addEventListener('submit', saveBillerDetails);
     
-    // Update biller preview in real-time
-    const billerInputs = ['companyName', 'companyTagline', 'companyAddress', 'companyPhone', 
-                         'companyEmail', 'companyWebsite', 'companyGST', 'bankDetails', 'termsConditions'];
-    billerInputs.forEach(id => {
-        document.getElementById(id).addEventListener('input', updateBillerPreview);
-    });
-
-    // Close modals when clicking outside
-    window.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) {
-            e.target.style.display = 'none';
+    // Auto-generate preview when inputs change
+    document.getElementById('invoiceForm').addEventListener('input', function() {
+        if (this.previewTimeout) {
+            clearTimeout(this.previewTimeout);
         }
+        this.previewTimeout = setTimeout(generateInvoicePreview, 500);
     });
+    
+    // Add initial rows
+    addNewItemRow();
+    addNewServiceRow();
 }
 
-function switchTab(tabName) {
-    // Update navigation buttons
-    navBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabName);
-    });
-
-    // Show selected tab
-    tabContents.forEach(tab => {
-        tab.classList.toggle('active', tab.id === tabName + 'Tab');
-    });
-
-    // Load data for specific tabs
-    if (tabName === 'invoices') {
-        loadInvoices();
-    } else if (tabName === 'stats') {
-        loadStatistics();
-    }
-}
-
-// Authentication Functions
-function showLoginModal() {
-    loginModal.style.display = 'block';
-}
-
-async function handleLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-
-    try {
-        await auth.signInWithEmailAndPassword(email, password);
-        loginModal.style.display = 'none';
-        loginForm.reset();
-        loginError.style.display = 'none';
-    } catch (error) {
-        loginError.textContent = error.message;
-        loginError.style.display = 'block';
-    }
-}
-
-async function handleLogout() {
-    try {
-        await auth.signOut();
-    } catch (error) {
-        console.error('Logout error:', error);
-    }
-}
-
-// Invoice Management Functions
-function toggleBillingPeriod() {
+function handleBillingCycleChange() {
     const billingCycle = document.getElementById('billingCycle').value;
-    const billingPeriodFields = document.getElementById('billingPeriodFields');
+    const dailyFields = document.getElementById('dailyBillingFields');
+    const monthlyFields = document.getElementById('monthlyBillingFields');
     
-    if (billingCycle !== 'daily') {
-        billingPeriodFields.style.display = 'block';
-        
-        // Set default dates based on billing cycle
-        const today = new Date();
-        const startDate = new Date(today);
-        
-        switch(billingCycle) {
-            case 'weekly':
-                startDate.setDate(today.getDate() - 7);
-                break;
-            case 'monthly':
-                startDate.setMonth(today.getMonth() - 1);
-                break;
-            case 'quarterly':
-                startDate.setMonth(today.getMonth() - 3);
-                break;
-            case 'yearly':
-                startDate.setFullYear(today.getFullYear() - 1);
-                break;
-        }
-        
-        document.getElementById('startDate').valueAsDate = startDate;
-        document.getElementById('endDate').valueAsDate = today;
+    if (billingCycle === 'monthly') {
+        dailyFields.style.display = 'none';
+        monthlyFields.style.display = 'block';
     } else {
-        billingPeriodFields.style.display = 'none';
+        dailyFields.style.display = 'block';
+        monthlyFields.style.display = 'none';
     }
+    
+    generateInvoicePreview();
 }
 
-function addNewItem() {
+function addNewItemRow() {
     const itemsContainer = document.getElementById('itemsContainer');
     const newItemRow = document.createElement('div');
     newItemRow.className = 'item-row';
     newItemRow.innerHTML = `
-        <input type="text" class="item-desc" placeholder="Item/service description" required>
+        <input type="text" class="item-desc" placeholder="Description" required>
         <input type="number" class="item-qty" placeholder="Qty" min="1" value="1" required>
-        <input type="number" class="item-price" placeholder="0.00" min="0" step="0.01" required>
+        <input type="number" class="item-price" placeholder="Price" min="0" step="0.01" required>
         <select class="item-warranty">
             <option value="no-warranty">No Warranty</option>
             <option value="7-days">7 Days</option>
@@ -229,55 +163,101 @@ function addNewItem() {
             <option value="1-year">1 Year</option>
             <option value="custom">Custom</option>
         </select>
-        <input type="text" class="custom-warranty-input" placeholder="Enter warranty" style="display: none;">
-        <div class="item-total">₹0.00</div>
-        <button type="button" class="remove-item btn-danger">
-            <i class="fas fa-trash"></i>
-        </button>
+        <input type="text" class="custom-warranty-input" placeholder="Enter warranty details" style="display: none;">
+        <button type="button" class="remove-item"><i class="fas fa-times"></i></button>
     `;
-    
     itemsContainer.appendChild(newItemRow);
-    
-    // Add event listeners for the new row
-    newItemRow.querySelector('.remove-item').addEventListener('click', function() {
-        itemsContainer.removeChild(newItemRow);
-        calculateTotals();
-    });
-    
-    newItemRow.querySelector('.item-warranty').addEventListener('change', function() {
-        toggleCustomWarranty(this);
-    });
+    newItemRow.querySelector('.item-desc').focus();
 }
 
-function toggleCustomWarranty(selectElement) {
-    const customInput = selectElement.parentElement.querySelector('.custom-warranty-input');
-    if (selectElement.value === 'custom') {
-        customInput.style.display = 'block';
-    } else {
-        customInput.style.display = 'none';
+function addNewServiceRow() {
+    const servicesContainer = document.getElementById('monthlyServicesContainer');
+    const newServiceRow = document.createElement('div');
+    newServiceRow.className = 'monthly-service-row';
+    newServiceRow.innerHTML = `
+        <input type="text" class="service-desc" placeholder="Service Description" required>
+        <input type="number" class="service-price" placeholder="Monthly Price" min="0" step="0.01" required>
+        <button type="button" class="remove-service"><i class="fas fa-times"></i></button>
+    `;
+    servicesContainer.appendChild(newServiceRow);
+    newServiceRow.querySelector('.service-desc').focus();
+}
+
+function populateMonthFilter() {
+    const monthFilter = document.getElementById('monthFilter');
+    const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    const currentYear = new Date().getFullYear();
+    
+    // Add last 6 months and next 6 months
+    for (let i = -6; i <= 6; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() + i);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const monthName = months[month];
+        const value = `${year}-${(month + 1).toString().padStart(2, '0')}`;
+        
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = `${monthName} ${year}`;
+        monthFilter.appendChild(option);
     }
 }
 
-function calculateTotals() {
-    let subtotal = 0;
-    const itemRows = document.querySelectorAll('.item-row');
+// Auth functions (same as before)
+function handleAuthStateChange(user) {
+    currentUser = user;
     
-    itemRows.forEach(row => {
-        const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
-        const price = parseFloat(row.querySelector('.item-price').value) || 0;
-        const total = qty * price;
+    if (user) {
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'block';
+        document.getElementById('userEmail').textContent = user.email;
+        document.getElementById('invoiceForm').style.display = 'block';
+        document.getElementById('loginPrompt').style.display = 'none';
+        document.getElementById('historyContainer').style.display = 'block';
         
-        row.querySelector('.item-total').textContent = `₹${total.toFixed(2)}`;
-        subtotal += total;
-    });
+        loadInvoices();
+        hideLoginModal();
+    } else {
+        document.getElementById('loginBtn').style.display = 'block';
+        document.getElementById('logoutBtn').style.display = 'none';
+        document.getElementById('userEmail').textContent = '';
+        document.getElementById('invoiceForm').style.display = 'none';
+        document.getElementById('loginPrompt').style.display = 'block';
+        document.getElementById('historyContainer').style.display = 'none';
+    }
+}
+
+function showLoginModal() {
+    document.getElementById('loginModal').style.display = 'block';
+}
+
+function hideLoginModal() {
+    document.getElementById('loginModal').style.display = 'none';
+    document.getElementById('loginError').style.display = 'none';
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
     
-    const taxPercent = parseFloat(document.getElementById('taxPercent').value) || 0;
-    const taxAmount = subtotal * (taxPercent / 100);
-    const grandTotal = subtotal + taxAmount;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorElement = document.getElementById('loginError');
     
-    document.getElementById('subtotalAmount').textContent = `₹${subtotal.toFixed(2)}`;
-    document.getElementById('taxAmount').textContent = `₹${taxAmount.toFixed(2)}`;
-    document.getElementById('grandTotalAmount').textContent = `₹${grandTotal.toFixed(2)}`;
+    try {
+        await auth.signInWithEmailAndPassword(email, password);
+    } catch (error) {
+        errorElement.textContent = error.message;
+        errorElement.style.display = 'block';
+    }
+}
+
+function logout() {
+    auth.signOut();
 }
 
 async function saveInvoice() {
@@ -285,26 +265,37 @@ async function saveInvoice() {
         alert('Please login to save invoices');
         return;
     }
-
-    const invoiceData = collectInvoiceData();
+    
+    const invoiceData = getInvoiceData();
+    
+    if (!invoiceData.customerName) {
+        alert('Please fill in customer name');
+        return;
+    }
+    
+    if (invoiceData.billingCycle === 'daily' && !invoiceData.items.length) {
+        alert('Please add at least one item for daily billing');
+        return;
+    }
+    
+    if (invoiceData.billingCycle === 'monthly' && !invoiceData.monthlyServices.length) {
+        alert('Please add at least one service for monthly billing');
+        return;
+    }
     
     try {
-        if (currentEditingInvoice) {
-            // Update existing invoice
-            await db.collection('invoices').doc(currentEditingInvoice).update(invoiceData);
-            alert('Invoice updated successfully!');
-        } else {
-            // Create new invoice
-            await db.collection('invoices').add({
-                ...invoiceData,
-                userId: currentUser.uid,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                status: 'pending'
-            });
-            alert('Invoice saved successfully!');
-        }
+        await db.collection('invoices').add({
+            ...invoiceData,
+            userId: currentUser.uid,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            // Add month field for filtering
+            month: invoiceData.invoiceDate ? invoiceData.invoiceDate.substring(0, 7) : '',
+            year: invoiceData.invoiceDate ? invoiceData.invoiceDate.substring(0, 4) : ''
+        });
         
-        resetInvoiceForm();
+        alert('Invoice saved successfully!');
+        clearForm();
         loadInvoices();
     } catch (error) {
         console.error('Error saving invoice:', error);
@@ -312,651 +303,522 @@ async function saveInvoice() {
     }
 }
 
-function collectInvoiceData() {
-    const items = [];
-    document.querySelectorAll('.item-row').forEach(row => {
-        const warrantySelect = row.querySelector('.item-warranty');
-        let warranty = warrantySelect.value;
-        
-        if (warranty === 'custom') {
-            warranty = row.querySelector('.custom-warranty-input').value;
-        }
-        
-        items.push({
-            description: row.querySelector('.item-desc').value,
-            quantity: parseFloat(row.querySelector('.item-qty').value),
-            price: parseFloat(row.querySelector('.item-price').value),
-            warranty: warranty,
-            total: parseFloat(row.querySelector('.item-qty').value) * parseFloat(row.querySelector('.item-price').value)
+function getInvoiceData() {
+    const billingCycle = document.getElementById('billingCycle').value;
+    const invoiceNumber = document.getElementById('invoiceNumber').value;
+    const invoiceDate = document.getElementById('invoiceDate').value;
+    const customerName = document.getElementById('customerName').value;
+    const customerContact = document.getElementById('customerContact').value;
+    const customerAddress = document.getElementById('customerAddress').value;
+    const notes = document.getElementById('notes').value;
+    
+    let items = [];
+    let monthlyServices = [];
+    let subtotal = 0;
+    
+    if (billingCycle === 'daily') {
+        // Get daily items
+        const itemRows = document.querySelectorAll('.item-row');
+        itemRows.forEach(row => {
+            const description = row.querySelector('.item-desc').value;
+            const quantity = parseFloat(row.querySelector('.item-qty').value) || 0;
+            const price = parseFloat(row.querySelector('.item-price').value) || 0;
+            const warranty = row.querySelector('.item-warranty').value;
+            const customWarranty = row.querySelector('.custom-warranty-input').value;
+            const total = quantity * price;
+            
+            if (description) {
+                items.push({
+                    description,
+                    quantity,
+                    price,
+                    warranty: warranty === 'custom' ? customWarranty : warranty,
+                    total
+                });
+                subtotal += total;
+            }
         });
-    });
-
-    const subtotal = parseFloat(document.getElementById('subtotalAmount').textContent.replace('₹', ''));
-    const taxAmount = parseFloat(document.getElementById('taxAmount').textContent.replace('₹', ''));
-    const grandTotal = parseFloat(document.getElementById('grandTotalAmount').textContent.replace('₹', ''));
-
+    } else {
+        // Get monthly services
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const serviceRows = document.querySelectorAll('.monthly-service-row');
+        
+        serviceRows.forEach(row => {
+            const description = row.querySelector('.service-desc').value;
+            const price = parseFloat(row.querySelector('.service-price').value) || 0;
+            
+            if (description) {
+                monthlyServices.push({
+                    description,
+                    price,
+                    total: price
+                });
+                subtotal += price;
+            }
+        });
+    }
+    
     return {
-        invoiceNumber: document.getElementById('invoiceNumber').value,
-        invoiceDate: document.getElementById('invoiceDate').value,
-        billingCycle: document.getElementById('billingCycle').value,
-        customerName: document.getElementById('customerName').value,
-        customerContact: document.getElementById('customerContact').value,
-        customerAddress: document.getElementById('customerAddress').value,
-        startDate: document.getElementById('startDate').value,
-        endDate: document.getElementById('endDate').value,
-        items: items,
-        subtotal: subtotal,
-        taxPercent: parseFloat(document.getElementById('taxPercent').value) || 0,
-        taxAmount: taxAmount,
-        grandTotal: grandTotal,
-        notes: document.getElementById('notes').value,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        billingCycle,
+        invoiceNumber,
+        invoiceDate,
+        customerName,
+        customerContact,
+        customerAddress,
+        notes,
+        items,
+        monthlyServices,
+        startDate: billingCycle === 'monthly' ? document.getElementById('startDate').value : '',
+        endDate: billingCycle === 'monthly' ? document.getElementById('endDate').value : '',
+        subtotal,
+        grandTotal: subtotal,
+        status: 'draft'
     };
 }
 
-function resetInvoiceForm() {
+function clearForm() {
     document.getElementById('invoiceForm').reset();
-    document.getElementById('invoiceDate').valueAsDate = new Date();
     document.getElementById('itemsContainer').innerHTML = '';
-    addNewItem(); // Add one empty item row
-    calculateTotals();
-    currentEditingInvoice = null;
-    document.getElementById('saveInvoiceBtn').innerHTML = '<i class="fas fa-save"></i> Save Invoice';
+    document.getElementById('monthlyServicesContainer').innerHTML = '';
+    addNewItemRow();
+    addNewServiceRow();
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invoiceDate').value = today;
+    
+    // Set default monthly period
+    const firstDay = new Date();
+    firstDay.setDate(1);
+    const lastDay = new Date();
+    lastDay.setMonth(lastDay.getMonth() + 1);
+    lastDay.setDate(0);
+    
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+    
+    generateInvoicePreview();
 }
 
 async function loadInvoices() {
     if (!currentUser) return;
-
+    
+    const invoicesList = document.getElementById('invoicesList');
+    invoicesList.innerHTML = '<p>Loading invoices...</p>';
+    
+    const billingCycleFilter = document.getElementById('billingCycleFilter').value;
+    const monthFilter = document.getElementById('monthFilter').value;
+    
     try {
-        const snapshot = await db.collection('invoices')
+        let query = db.collection('invoices')
             .where('userId', '==', currentUser.uid)
-            .orderBy('createdAt', 'desc')
-            .get();
+            .orderBy('createdAt', 'desc');
         
-        invoices = [];
+        // Apply filters
+        if (billingCycleFilter !== 'all') {
+            query = query.where('billingCycle', '==', billingCycleFilter);
+        }
+        
+        if (monthFilter !== 'all') {
+            query = query.where('month', '==', monthFilter);
+        }
+        
+        const snapshot = await query.get();
+        
+        if (snapshot.empty) {
+            invoicesList.innerHTML = '<p>No invoices found. Create your first invoice!</p>';
+            return;
+        }
+        
+        invoicesList.innerHTML = '';
         snapshot.forEach(doc => {
-            invoices.push({
-                id: doc.id,
-                ...doc.data()
-            });
+            const invoice = { id: doc.id, ...doc.data() };
+            const invoiceElement = createInvoiceCard(invoice);
+            invoicesList.appendChild(invoiceElement);
         });
-        
-        displayInvoices();
     } catch (error) {
         console.error('Error loading invoices:', error);
+        invoicesList.innerHTML = '<p>Error loading invoices</p>';
     }
 }
 
-function displayInvoices(filteredInvoices = null) {
-    const invoicesList = document.getElementById('invoicesList');
-    const dataToDisplay = filteredInvoices || invoices;
+function createInvoiceCard(invoice) {
+    const card = document.createElement('div');
+    card.className = 'invoice-card';
     
-    invoicesList.innerHTML = '';
-
-    if (dataToDisplay.length === 0) {
-        invoicesList.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">No invoices found</td></tr>';
-        return;
+    const formattedDate = invoice.invoiceDate ? 
+        new Date(invoice.invoiceDate).toLocaleDateString('en-IN') : 
+        'No date';
+    
+    const badgeClass = invoice.billingCycle === 'monthly' ? 'badge-monthly' : 'badge-daily';
+    const badgeText = invoice.billingCycle === 'monthly' ? 'Monthly' : 'Daily';
+    
+    let periodInfo = '';
+    if (invoice.billingCycle === 'monthly' && invoice.startDate && invoice.endDate) {
+        const start = new Date(invoice.startDate).toLocaleDateString('en-IN');
+        const end = new Date(invoice.endDate).toLocaleDateString('en-IN');
+        periodInfo = `<div class="period-info">Period: ${start} to ${end}</div>`;
     }
-
-    dataToDisplay.forEach(invoice => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${invoice.invoiceNumber}</td>
-            <td>${new Date(invoice.invoiceDate).toLocaleDateString()}</td>
-            <td>${invoice.customerName}</td>
-            <td>${invoice.billingCycle}</td>
-            <td>₹${invoice.grandTotal.toFixed(2)}</td>
-            <td><span class="status-badge status-${invoice.status || 'pending'}">${invoice.status || 'pending'}</span></td>
-            <td>
-                <button class="btn-secondary view-invoice" data-id="${invoice.id}">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn-primary edit-invoice" data-id="${invoice.id}">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-danger delete-invoice" data-id="${invoice.id}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        `;
-        invoicesList.appendChild(row);
-    });
-
-    // Add event listeners for action buttons
-    document.querySelectorAll('.view-invoice').forEach(btn => {
-        btn.addEventListener('click', () => viewInvoice(btn.dataset.id));
-    });
     
-    document.querySelectorAll('.edit-invoice').forEach(btn => {
-        btn.addEventListener('click', () => editInvoice(btn.dataset.id));
-    });
+    card.innerHTML = `
+        <div class="invoice-card-header">
+            <span class="invoice-number">${invoice.invoiceNumber || 'No number'}</span>
+            <span class="billing-cycle-badge ${badgeClass}">${badgeText}</span>
+            <span class="invoice-date">${formattedDate}</span>
+        </div>
+        <div class="invoice-customer">${invoice.customerName || 'No customer'}</div>
+        ${periodInfo}
+        <div class="invoice-total">₹${invoice.grandTotal?.toFixed(2) || '0.00'}</div>
+        <div class="invoice-actions">
+            <button class="btn-small btn-edit" onclick="loadInvoiceForEdit('${invoice.id}')">
+                <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="btn-small btn-delete" onclick="deleteInvoice('${invoice.id}')">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+    `;
     
-    document.querySelectorAll('.delete-invoice').forEach(btn => {
-        btn.addEventListener('click', () => deleteInvoice(btn.dataset.id));
-    });
+    return card;
 }
 
-function filterInvoices() {
-    const billingCycleFilter = document.getElementById('billingCycleFilter').value;
-    const statusFilter = document.getElementById('statusFilter').value;
-    const monthFilter = document.getElementById('monthFilter').value;
-
-    let filtered = invoices;
-
-    if (billingCycleFilter !== 'all') {
-        filtered = filtered.filter(inv => inv.billingCycle === billingCycleFilter);
-    }
-
-    if (statusFilter !== 'all') {
-        filtered = filtered.filter(inv => (inv.status || 'pending') === statusFilter);
-    }
-
-    if (monthFilter) {
-        filtered = filtered.filter(inv => {
-            const invoiceDate = new Date(inv.invoiceDate);
-            const filterDate = new Date(monthFilter + '-01');
-            return invoiceDate.getFullYear() === filterDate.getFullYear() && 
-                   invoiceDate.getMonth() === filterDate.getMonth();
-        });
-    }
-
-    displayInvoices(filtered);
-}
-
-async function viewInvoice(invoiceId) {
-    const invoice = invoices.find(inv => inv.id === invoiceId);
-    if (!invoice) return;
-
-    const modal = document.getElementById('viewInvoiceModal');
-    const content = document.getElementById('viewInvoiceContent');
-    
-    content.innerHTML = generateInvoiceHTML(invoice);
-    modal.style.display = 'block';
-
-    // Add print functionality for the view modal
-    document.getElementById('printViewBtn').onclick = () => printInvoiceContent(content);
-}
-
-async function editInvoice(invoiceId) {
-    const invoice = invoices.find(inv => inv.id === invoiceId);
-    if (!invoice) return;
-
-    // Switch to invoice tab
-    switchTab('invoice');
-    
-    // Populate form with invoice data
-    document.getElementById('invoiceNumber').value = invoice.invoiceNumber;
-    document.getElementById('invoiceDate').value = invoice.invoiceDate;
-    document.getElementById('billingCycle').value = invoice.billingCycle;
-    document.getElementById('customerName').value = invoice.customerName;
-    document.getElementById('customerContact').value = invoice.customerContact || '';
-    document.getElementById('customerAddress').value = invoice.customerAddress || '';
-    document.getElementById('startDate').value = invoice.startDate || '';
-    document.getElementById('endDate').value = invoice.endDate || '';
-    document.getElementById('taxPercent').value = invoice.taxPercent || 0;
-    document.getElementById('notes').value = invoice.notes || '';
-
-    // Clear existing items and add invoice items
-    document.getElementById('itemsContainer').innerHTML = '';
-    invoice.items.forEach((item, index) => {
-        if (index === 0) {
-            // Use existing first row
-            const firstRow = document.querySelector('.item-row');
-            firstRow.querySelector('.item-desc').value = item.description;
-            firstRow.querySelector('.item-qty').value = item.quantity;
-            firstRow.querySelector('.item-price').value = item.price;
-            firstRow.querySelector('.item-warranty').value = item.warranty;
+async function loadInvoiceForEdit(invoiceId) {
+    try {
+        const doc = await db.collection('invoices').doc(invoiceId).get();
+        
+        if (!doc.exists) {
+            alert('Invoice not found');
+            return;
+        }
+        
+        const invoice = doc.data();
+        
+        // Set billing cycle first
+        document.getElementById('billingCycle').value = invoice.billingCycle || 'daily';
+        handleBillingCycleChange();
+        
+        // Populate common fields
+        document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
+        document.getElementById('invoiceDate').value = invoice.invoiceDate || '';
+        document.getElementById('customerName').value = invoice.customerName || '';
+        document.getElementById('customerContact').value = invoice.customerContact || '';
+        document.getElementById('customerAddress').value = invoice.customerAddress || '';
+        document.getElementById('notes').value = invoice.notes || '';
+        
+        if (invoice.billingCycle === 'monthly') {
+            // Populate monthly billing fields
+            document.getElementById('startDate').value = invoice.startDate || '';
+            document.getElementById('endDate').value = invoice.endDate || '';
             
-            if (item.warranty && !firstRow.querySelector('.item-warranty').querySelector(`option[value="${item.warranty}"]`)) {
-                firstRow.querySelector('.item-warranty').value = 'custom';
-                firstRow.querySelector('.custom-warranty-input').value = item.warranty;
-                firstRow.querySelector('.custom-warranty-input').style.display = 'block';
+            // Clear and populate services
+            document.getElementById('monthlyServicesContainer').innerHTML = '';
+            if (invoice.monthlyServices && invoice.monthlyServices.length > 0) {
+                invoice.monthlyServices.forEach(service => {
+                    addNewServiceRow();
+                    const rows = document.querySelectorAll('.monthly-service-row');
+                    const currentRow = rows[rows.length - 1];
+                    
+                    currentRow.querySelector('.service-desc').value = service.description || '';
+                    currentRow.querySelector('.service-price').value = service.price || 0;
+                });
+            } else {
+                addNewServiceRow();
             }
         } else {
-            addNewItem();
-            const newRow = document.querySelector('.item-row:last-child');
-            newRow.querySelector('.item-desc').value = item.description;
-            newRow.querySelector('.item-qty').value = item.quantity;
-            newRow.querySelector('.item-price').value = item.price;
-            newRow.querySelector('.item-warranty').value = item.warranty;
-            
-            if (item.warranty && !newRow.querySelector('.item-warranty').querySelector(`option[value="${item.warranty}"]`)) {
-                newRow.querySelector('.item-warranty').value = 'custom';
-                newRow.querySelector('.custom-warranty-input').value = item.warranty;
-                newRow.querySelector('.custom-warranty-input').style.display = 'block';
+            // Clear and populate daily items
+            document.getElementById('itemsContainer').innerHTML = '';
+            if (invoice.items && invoice.items.length > 0) {
+                invoice.items.forEach((item, index) => {
+                    addNewItemRow();
+                    const rows = document.querySelectorAll('.item-row');
+                    const currentRow = rows[rows.length - 1];
+                    
+                    currentRow.querySelector('.item-desc').value = item.description || '';
+                    currentRow.querySelector('.item-qty').value = item.quantity || 1;
+                    currentRow.querySelector('.item-price').value = item.price || 0;
+                    
+                    if (item.warranty && item.warranty !== 'no-warranty') {
+                        if (['7-days', '15-days', '1-month', '3-months', '6-months', '1-year'].includes(item.warranty)) {
+                            currentRow.querySelector('.item-warranty').value = item.warranty;
+                        } else {
+                            currentRow.querySelector('.item-warranty').value = 'custom';
+                            currentRow.querySelector('.custom-warranty-input').value = item.warranty;
+                            currentRow.querySelector('.custom-warranty-input').style.display = 'block';
+                        }
+                    }
+                });
+            } else {
+                addNewItemRow();
             }
         }
-    });
-
-    // Update totals and set editing state
-    calculateTotals();
-    currentEditingInvoice = invoiceId;
-    document.getElementById('saveInvoiceBtn').innerHTML = '<i class="fas fa-save"></i> Update Invoice';
+        
+        generateInvoicePreview();
+        document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
+        
+    } catch (error) {
+        console.error('Error loading invoice:', error);
+        alert('Error loading invoice: ' + error.message);
+    }
 }
 
 async function deleteInvoice(invoiceId) {
-    if (!confirm('Are you sure you want to delete this invoice?')) return;
-
+    if (!confirm('Are you sure you want to delete this invoice?')) {
+        return;
+    }
+    
     try {
         await db.collection('invoices').doc(invoiceId).delete();
         loadInvoices();
-        alert('Invoice deleted successfully!');
     } catch (error) {
         console.error('Error deleting invoice:', error);
         alert('Error deleting invoice: ' + error.message);
     }
 }
 
-// Export and Print Functions
-function previewInvoice() {
-    const invoiceData = collectInvoiceData();
-    const previewContent = document.getElementById('invoicePreview');
+function generateInvoicePreview() {
+    const billingCycle = document.getElementById('billingCycle').value;
+    const invoiceData = getInvoiceData();
     
-    previewContent.innerHTML = generateInvoiceHTML(invoiceData);
+    const invoiceHTML = createInvoiceHTML(invoiceData);
+    const previewContainer = document.getElementById('invoicePreview');
+    previewContainer.innerHTML = invoiceHTML;
 }
 
-function generateInvoiceHTML(invoiceData) {
-    // This function generates the HTML for invoice preview and viewing
-    // Implementation would create a professional invoice layout
-    return `
-        <div class="invoice-template">
-            <div class="invoice-header">
-                <h2>INVOICE</h2>
-                <div class="invoice-meta">
-                    <p><strong>Invoice #:</strong> ${invoiceData.invoiceNumber}</p>
-                    <p><strong>Date:</strong> ${new Date(invoiceData.invoiceDate).toLocaleDateString()}</p>
-                </div>
+function createInvoiceHTML(invoiceData) {
+    const formattedDate = invoiceData.invoiceDate ? 
+        new Date(invoiceData.invoiceDate).toLocaleDateString('en-IN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }) : '';
+    
+    let itemsHTML = '';
+    let periodInfo = '';
+    
+    if (invoiceData.billingCycle === 'monthly') {
+        // Monthly billing template
+        const startDate = invoiceData.startDate ? 
+            new Date(invoiceData.startDate).toLocaleDateString('en-IN') : '';
+        const endDate = invoiceData.endDate ? 
+            new Date(invoiceData.endDate).toLocaleDateString('en-IN') : '';
+        
+        periodInfo = `
+            <div class="invoice-period">
+                <strong>Billing Period:</strong> ${startDate} to ${endDate}
             </div>
-            <div class="invoice-details">
-                <div class="biller-info">
-                    <h3>${document.getElementById('companyName')?.value || 'MNR SoftTech Solutions'}</h3>
-                    <p>${document.getElementById('companyTagline')?.value || 'Computer Software & Hardware Services'}</p>
-                </div>
-                <div class="customer-info">
-                    <h3>Bill To:</h3>
-                    <p><strong>${invoiceData.customerName}</strong></p>
-                    <p>${invoiceData.customerContact || ''}</p>
-                    <p>${invoiceData.customerAddress || ''}</p>
-                </div>
-            </div>
-            <table class="invoice-items">
+        `;
+        
+        itemsHTML = `
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>Service Description</th>
+                        <th class="text-right">Monthly Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${invoiceData.monthlyServices.map(service => `
+                        <tr>
+                            <td>${service.description}</td>
+                            <td class="text-right">₹${service.price.toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } else {
+        // Daily billing template
+        itemsHTML = `
+            <table class="invoice-table">
                 <thead>
                     <tr>
                         <th>Description</th>
                         <th>Qty</th>
                         <th>Price</th>
-                        <th>Warranty</th>
-                        <th>Amount</th>
+                        <th class="text-right">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${invoiceData.items.map(item => `
                         <tr>
-                            <td>${item.description}</td>
+                            <td>
+                                ${item.description}
+                                ${item.warranty && item.warranty !== 'no-warranty' ? 
+                                    `<span class="warranty-badge">
+                                        Warranty: ${item.warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
+                                    </span>` : ''}
+                            </td>
                             <td>${item.quantity}</td>
                             <td>₹${item.price.toFixed(2)}</td>
-                            <td>${item.warranty}</td>
-                            <td>₹${item.total.toFixed(2)}</td>
+                            <td class="text-right">₹${item.total.toFixed(2)}</td>
                         </tr>
                     `).join('')}
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="4" style="text-align: right;"><strong>Subtotal:</strong></td>
-                        <td><strong>₹${invoiceData.subtotal.toFixed(2)}</strong></td>
-                    </tr>
-                    <tr>
-                        <td colspan="4" style="text-align: right;"><strong>Tax (${invoiceData.taxPercent}%):</strong></td>
-                        <td><strong>₹${invoiceData.taxAmount.toFixed(2)}</strong></td>
-                    </tr>
-                    <tr>
-                        <td colspan="4" style="text-align: right;"><strong>Grand Total:</strong></td>
-                        <td><strong>₹${invoiceData.grandTotal.toFixed(2)}</strong></td>
-                    </tr>
-                </tfoot>
             </table>
-            ${invoiceData.notes ? `<div class="invoice-notes"><strong>Notes:</strong> ${invoiceData.notes}</div>` : ''}
+        `;
+    }
+    
+    return `
+        <div class="invoice-template">
+            <div class="invoice-header">
+                <div class="invoice-title">INVOICE</div>
+                <div class="invoice-meta">
+                    <div class="invoice-number">Invoice #${invoiceData.invoiceNumber || '---'}</div>
+                    <div class="invoice-date">Date: ${formattedDate}</div>
+                    <div class="billing-cycle">${invoiceData.billingCycle === 'monthly' ? 'Monthly Billing' : 'One-Time Billing'}</div>
+                </div>
+            </div>
+            
+            <div class="invoice-company">
+                <div class="company-name">MNR SoftTech Solutions</div>
+                <div class="company-details">
+                    Computer Software & Hardware Services<br>
+                    Contact: Maniteja (mnrdeveloper11@gmail.com)<br>
+                    Phone: +91 7416006394 (Whatsapp only)
+                </div>
+            </div>
+            
+            <div class="invoice-customer">
+                <div class="customer-title">BILL TO:</div>
+                <div class="customer-details">
+                    ${invoiceData.customerName || 'Customer Name'}<br>
+                    ${invoiceData.customerContact ? 'Phone: ' + invoiceData.customerContact + '<br>' : ''}
+                    ${invoiceData.customerAddress || 'Address not provided'}
+                </div>
+            </div>
+            
+            ${periodInfo}
+            ${itemsHTML}
+            
+            <div class="invoice-totals">
+                <div class="invoice-totals-row invoice-grand-total">
+                    <span class="invoice-totals-label">Total Amount:</span>
+                    <span class="invoice-totals-value">₹${invoiceData.grandTotal.toFixed(2)}</span>
+                </div>
+            </div>
+            
+            ${invoiceData.billingCycle === 'daily' ? `
+                <div class="warranty-disclaimer">
+                    <h3>Warranty Terms</h3>
+                    <p>Warranty covers manufacturing defects only. Does not cover:</p>
+                    <ul>
+                        <li>Physical damage or liquid damage</li>
+                        <li>Unauthorized repairs or modifications</li>
+                        <li>Software issues not related to hardware</li>
+                    </ul>
+                    <p>Original invoice required for all warranty claims.</p>
+                </div>
+            ` : `
+                <div class="warranty-disclaimer">
+                    <h3>Monthly Service Terms</h3>
+                    <p>This is a recurring monthly service invoice. Services are billed in advance.</p>
+                    <ul>
+                        <li>Payment due upon receipt</li>
+                        <li>Late payments may incur fees</li>
+                        <li>Services may be suspended for non-payment</li>
+                    </ul>
+                </div>
+            `}
+            
+            ${invoiceData.notes ? `
+                <div class="invoice-notes">
+                    <div class="invoice-notes-title">Notes:</div>
+                    <div class="invoice-notes-content">${invoiceData.notes}</div>
+                </div>
+            ` : ''}
+            
+            <div style="margin-top: 3rem; text-align: center; color: #666; font-size: 0.9rem;">
+                Thank you for your business!<br>
+                MNR SoftTech Solutions
+            </div>
         </div>
     `;
 }
 
-async function downloadPdf() {
+// Keep the existing download and print functions (they remain the same)
+function downloadAsPDF() {
+    generateInvoicePreview();
     const element = document.getElementById('invoicePreview');
     const opt = {
-        margin: 1,
-        filename: `invoice-${document.getElementById('invoiceNumber').value}.pdf`,
+        margin: 10,
+        filename: `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
     html2pdf().set(opt).from(element).save();
 }
 
-async function downloadJpg() {
+function downloadAsJPEG() {
+    generateInvoicePreview();
     const element = document.getElementById('invoicePreview');
-    const canvas = await html2canvas(element);
-    const image = canvas.toDataURL('image/jpeg', 1.0);
     
-    const link = document.createElement('a');
-    link.download = `invoice-${document.getElementById('invoiceNumber').value}.jpg`;
-    link.href = image;
-    link.click();
+    html2canvas(element).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+    });
 }
 
 function printInvoice() {
-    const printContent = document.getElementById('invoicePreview').innerHTML;
-    const originalContent = document.body.innerHTML;
+    generateInvoicePreview();
     
-    document.body.innerHTML = printContent;
-    window.print();
-    document.body.innerHTML = originalContent;
-    location.reload(); // Reload to restore functionality
+    setTimeout(() => {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>MNR SoftTech Solutions - Invoice</title>
+                <style>
+                    @media print {
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            font-family: Arial, sans-serif;
+                        }
+                        .invoice-template {
+                            width: 210mm;
+                            min-height: 297mm;
+                            margin: 0 auto;
+                            padding: 15mm;
+                            box-sizing: border-box;
+                        }
+                        .button-group, footer, header {
+                            display: none !important;
+                        }
+                        @page {
+                            size: A4;
+                            margin: 15mm;
+                        }
+                    }
+                    body {
+                        visibility: hidden;
+                    }
+                    .invoice-template {
+                        visibility: visible;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                    }
+                </style>
+            </head>
+            <body>
+                ${document.getElementById('invoicePreview').innerHTML}
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                            window.close();
+                        }, 200);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }, 100);
 }
-
-function printInvoiceContent(contentElement) {
-    const printContent = contentElement.innerHTML;
-    const originalContent = document.body.innerHTML;
-    
-    document.body.innerHTML = printContent;
-    window.print();
-    document.body.innerHTML = originalContent;
-    location.reload();
-}
-
-// Statistics Functions
-async function loadStatistics() {
-    if (!currentUser) return;
-
-    try {
-        const snapshot = await db.collection('invoices')
-            .where('userId', '==', currentUser.uid)
-            .get();
-        
-        const allInvoices = [];
-        snapshot.forEach(doc => {
-            allInvoices.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
-
-        updateStatisticsCards(allInvoices);
-        updateCharts(allInvoices);
-        updateRecentInvoices(allInvoices);
-    } catch (error) {
-        console.error('Error loading statistics:', error);
-    }
-}
-
-function updateStatisticsCards(invoices) {
-    const totalIncome = invoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-    const totalInvoices = invoices.length;
-    const pendingAmount = invoices
-        .filter(inv => (inv.status || 'pending') === 'pending')
-        .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-    const avgInvoice = totalInvoices > 0 ? totalIncome / totalInvoices : 0;
-
-    document.getElementById('totalIncome').textContent = `₹${totalIncome.toFixed(2)}`;
-    document.getElementById('totalInvoices').textContent = totalInvoices;
-    document.getElementById('pendingAmount').textContent = `₹${pendingAmount.toFixed(2)}`;
-    document.getElementById('avgInvoice').textContent = `₹${avgInvoice.toFixed(2)}`;
-}
-
-function updateCharts(invoices) {
-    // Income Trend Chart
-    const incomeCtx = document.getElementById('incomeChart').getContext('2d');
-    const monthlyData = calculateMonthlyData(invoices);
-    
-    new Chart(incomeCtx, {
-        type: 'line',
-        data: {
-            labels: monthlyData.labels,
-            datasets: [{
-                label: 'Monthly Income',
-                data: monthlyData.amounts,
-                borderColor: '#3498db',
-                backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Income Trend'
-                }
-            }
-        }
-    });
-
-    // Invoice Types Chart
-    const typeCtx = document.getElementById('typeChart').getContext('2d');
-    const typeData = calculateTypeData(invoices);
-    
-    new Chart(typeCtx, {
-        type: 'doughnut',
-        data: {
-            labels: typeData.labels,
-            datasets: [{
-                data: typeData.counts,
-                backgroundColor: [
-                    '#3498db',
-                    '#2ecc71',
-                    '#e74c3c',
-                    '#f39c12',
-                    '#9b59b6'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-}
-
-function calculateMonthlyData(invoices) {
-    // Group invoices by month and calculate totals
-    const monthlyTotals = {};
-    
-    invoices.forEach(invoice => {
-        const date = new Date(invoice.invoiceDate);
-        const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-        
-        if (!monthlyTotals[monthYear]) {
-            monthlyTotals[monthYear] = 0;
-        }
-        
-        monthlyTotals[monthYear] += invoice.grandTotal || 0;
-    });
-    
-    // Get last 6 months
-    const labels = [];
-    const amounts = [];
-    const today = new Date();
-    
-    for (let i = 5; i >= 0; i--) {
-        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-        const monthName = date.toLocaleDateString('en', { month: 'short', year: '2-digit' });
-        
-        labels.push(monthName);
-        amounts.push(monthlyTotals[monthYear] || 0);
-    }
-    
-    return { labels, amounts };
-}
-
-function calculateTypeData(invoices) {
-    const typeCounts = {};
-    
-    invoices.forEach(invoice => {
-        const type = invoice.billingCycle || 'monthly';
-        typeCounts[type] = (typeCounts[type] || 0) + 1;
-    });
-    
-    return {
-        labels: Object.keys(typeCounts),
-        counts: Object.values(typeCounts)
-    };
-}
-
-function updateRecentInvoices(invoices) {
-    const recentInvoicesList = document.getElementById('recentInvoicesList');
-    const recentInvoices = invoices
-        .sort((a, b) => new Date(b.invoiceDate) - new Date(a.invoiceDate))
-        .slice(0, 5);
-    
-    if (recentInvoices.length === 0) {
-        recentInvoicesList.innerHTML = '<p>No recent invoices</p>';
-        return;
-    }
-    
-    recentInvoicesList.innerHTML = recentInvoices.map(invoice => `
-        <div class="recent-invoice-item">
-            <div class="invoice-info">
-                <strong>${invoice.invoiceNumber}</strong>
-                <span>${invoice.customerName}</span>
-            </div>
-            <div class="invoice-amount">
-                ₹${invoice.grandTotal.toFixed(2)}
-                <span class="status-badge status-${invoice.status || 'pending'}">${invoice.status || 'pending'}</span>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Biller Details Functions
-async function loadBillerDetails() {
-    if (!currentUser) return;
-
-    try {
-        const doc = await db.collection('billerDetails').doc(currentUser.uid).get();
-        if (doc.exists) {
-            const data = doc.data();
-            // Populate form fields
-            Object.keys(data).forEach(key => {
-                const element = document.getElementById(key);
-                if (element) element.value = data[key];
-            });
-            updateBillerPreview();
-        }
-    } catch (error) {
-        console.error('Error loading biller details:', error);
-    }
-}
-
-async function saveBillerDetails(e) {
-    e.preventDefault();
-    if (!currentUser) return;
-
-    const billerData = {
-        companyName: document.getElementById('companyName').value,
-        companyTagline: document.getElementById('companyTagline').value,
-        companyAddress: document.getElementById('companyAddress').value,
-        companyPhone: document.getElementById('companyPhone').value,
-        companyEmail: document.getElementById('companyEmail').value,
-        companyWebsite: document.getElementById('companyWebsite').value,
-        companyGST: document.getElementById('companyGST').value,
-        bankDetails: document.getElementById('bankDetails').value,
-        termsConditions: document.getElementById('termsConditions').value,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    try {
-        await db.collection('billerDetails').doc(currentUser.uid).set(billerData, { merge: true });
-        alert('Biller details saved successfully!');
-    } catch (error) {
-        console.error('Error saving biller details:', error);
-        alert('Error saving biller details: ' + error.message);
-    }
-}
-
-function updateBillerPreview() {
-    document.getElementById('previewCompanyName').textContent = document.getElementById('companyName').value;
-    document.getElementById('previewTagline').textContent = document.getElementById('companyTagline').value;
-    document.getElementById('previewAddress').textContent = document.getElementById('companyAddress').value;
-    
-    const phone = document.getElementById('companyPhone').value;
-    const email = document.getElementById('companyEmail').value;
-    document.getElementById('previewContact').textContent = `Phone: ${phone} | Email: ${email}`;
-    
-    const website = document.getElementById('companyWebsite').value;
-    document.getElementById('previewWebsite').textContent = website ? `Website: ${website}` : '';
-    
-    const gst = document.getElementById('companyGST').value;
-    document.getElementById('previewGST').textContent = gst ? `GST: ${gst}` : '';
-    
-    const bankDetails = document.getElementById('bankDetails').value;
-    document.getElementById('previewBankDetails').innerHTML = bankDetails ? `<strong>Bank Details:</strong><br>${bankDetails.replace(/\n/g, '<br>')}` : '';
-    
-    const terms = document.getElementById('termsConditions').value;
-    document.getElementById('previewTerms').innerHTML = terms ? `<strong>Terms & Conditions:</strong><br>${terms.replace(/\n/g, '<br>')}` : '';
-}
-
-// Export Invoices to Excel/CSV
-function exportInvoices() {
-    const dataToExport = invoices.map(invoice => ({
-        'Invoice Number': invoice.invoiceNumber,
-        'Date': new Date(invoice.invoiceDate).toLocaleDateString(),
-        'Customer': invoice.customerName,
-        'Billing Cycle': invoice.billingCycle,
-        'Subtotal': invoice.subtotal,
-        'Tax': invoice.taxAmount,
-        'Grand Total': invoice.grandTotal,
-        'Status': invoice.status || 'pending'
-    }));
-
-    // Convert to CSV
-    const csv = convertToCSV(dataToExport);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.download = `invoices-export-${new Date().toISOString().split('T')[0]}.csv`;
-    link.href = url;
-    link.click();
-}
-
-function convertToCSV(data) {
-    const headers = Object.keys(data[0]);
-    const csv = [
-        headers.join(','),
-        ...data.map(row => headers.map(header => `"${row[header]}"`).join(','))
-    ].join('\n');
-    
-    return csv;
-}
-
-// Utility Functions
-function updateCurrentYear() {
-    document.getElementById('currentYear').textContent = new Date().getFullYear();
-}
-
-// Initialize first item row
-document.addEventListener('DOMContentLoaded', function() {
-    // Add event listener for the first remove button
-    const firstRemoveBtn = document.querySelector('.remove-item');
-    if (firstRemoveBtn) {
-        firstRemoveBtn.addEventListener('click', function() {
-            const itemsContainer = document.getElementById('itemsContainer');
-            if (itemsContainer.children.length > 1) {
-                itemsContainer.removeChild(this.parentElement);
-                calculateTotals();
-            }
-        });
-    }
-    
-    // Set current date as default
-    document.getElementById('invoiceDate').valueAsDate = new Date();
-    
-    // Initialize billing cycle
-    toggleBillingPeriod();
-});
