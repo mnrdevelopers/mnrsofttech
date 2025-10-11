@@ -547,7 +547,7 @@ function validateForm() {
     
     items.forEach(row => {
         const description = row.querySelector('.item-desc').value;
-        if (description) hasValidValidItems = true;
+        if (description) hasValidItems = true;
     });
     
     if (!customerName) {
@@ -835,4 +835,14 @@ function printInvoice() {
         `);
         printWindow.document.close();
     }, 100);
+}
+
+function showPreview() {
+    if (!validateForm()) {
+        showToast('Please fill in all required fields before previewing', 'error');
+        return;
+    }
+    
+    generateInvoicePreview();
+    new bootstrap.Modal(document.getElementById('previewModal')).show();
 }
