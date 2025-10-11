@@ -495,75 +495,101 @@ document.addEventListener('DOMContentLoaded', function() {
         dashboardView.classList.remove('d-none');
     }
     
-    function loadInvoices() {
-        if (!currentUser) return;
-        
-        showLoading(true);
-        
-        db.collection('invoices')
-            .where('userId', '==', currentUser.uid)
-            .orderBy('createdAt', 'desc')
-            .get()
-            .then((querySnapshot) => {
-                showLoading(false);
+   function loadInvoices() {
+    if (!currentUser) return;
+    
+    showLoading(true);
+    
+    db.collection('invoices')
+        .where('userId', '==', currentUser.uid)
+        .orderBy('createdAt', 'desc')
+        .get()
+        .then((querySnapshot) => {
+            showLoading(false);
+            
+            if (querySnapshot.empty) {
+                invoicesTableBody.innerHTML = '';
+                noInvoicesMessage.classList.remove('d-none');
+                return;
+            }
+            
+            noInvoicesMessage.classList.add('d-none');
+            let invoicesHtml = '';
+            
+            querySnapshot.forEach((doc) => {
+                const invoice = doc.data();
+                const date = invoice.createdAt ? 
+                    invoice.createdAt.toDate().toLocaleDateString() : 
+                    new Date(invoice.invoiceDate).toLocaleDateString();
                 
-                if (querySnapshot.empty) {
-                    invoicesTableBody.innerHTML = '';
-                    noInvoicesMessage.classList.remove('d-none');
-                    return;
-                }
-                
-                noInvoicesMessage.classList.add('d-none');
-                let invoicesHtml = '';
-                
-                querySnapshot.forEach((doc) => {
-                    const invoice = doc.data();
-                    const date = invoice.createdAt ? 
-                        invoice.createdAt.toDate().toLocaleDateString() : 
-                        new Date(invoice.invoiceDate).toLocaleDateString();
-                    
-                    invoicesHtml += `
-                        <tr>
-                            <td>${invoice.invoiceNumber}</td>
-                            <td>${date}</td>
-                            <td>${invoice.customerName}</td>
-                            <td>₹${invoice.total.toFixed(2)}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary view-invoice" data-id="${doc.id}">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-success download-invoice-pdf" data-id="${doc.id}">
-                                    <i class="fas fa-file-pdf"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-                
-                invoicesTableBody.innerHTML = invoicesHtml;
-                
-                // Add event listeners to view buttons
-                document.querySelectorAll('.view-invoice').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const invoiceId = this.getAttribute('data-id');
-                        viewInvoice(invoiceId);
-                    });
-                });
-                
-                // Add event listeners to download buttons
-                document.querySelectorAll('.download-invoice-pdf').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const invoiceId = this.getAttribute('data-id');
-                        downloadInvoicePdf(invoiceId);
-                    });
-                });
-            })
-            .catch((error) => {
-                showLoading(false);
-                console.error('Error loading invoices:', error);
-                showAlert('Error loading invoices. Please try again.', 'danger');
+                invoicesHtml += `
+                    <tr>
+                        <td>${invoice.invoiceNumber}</td>
+                        <td>${date}</td>
+                        <td>${invoice.customerName}</td>
+                        <td>₹${invoice.total.toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary view-invoice" data-id="${doc.id}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-success download-invoice-pdf" data-id="${doc.id}">
+                                <i class="fas fa-file-pdf"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-invoice" data-id="${doc.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
             });
-    }
+            
+            invoicesTableBody.innerHTML = invoicesHtml;
+            
+            // Add event listeners to buttons
+            document.querySelectorAll('.view-invoice').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const invoiceId = this.getAttribute('data-id');
+                    viewInvoice(invoiceId);
+                });
+            });
+            
+            document.querySelectorAll('.download-invoice-pdf').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const invoiceId = this.getAttribute('data-id');
+                    downloadInvoicePdf(invoiceId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-invoice').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const invoiceId = this.getAttribute('data-id');
+                    deleteInvoice(invoiceId);
+                });
+            });
+        })
+        .catch((error) => {
+            showLoading(false);
+            console.error('Error loading invoices:', error);
+            
+            // Handle index creation period
+            if (error.message.includes('index')) {
+                invoicesTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">
+                            <div class="py-3">
+                                <i class="fas fa-sync fa-spin me-2"></i>
+                                Setting up database indexes...<br>
+                                <small>This may take a few minutes. Please refresh the page later.</small>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                noInvoicesMessage.classList.add('d-none');
+            } else if (!error.message.includes('permission')) {
+                showAlert('Error loading invoices. Please try again.', 'danger');
+            }
+        });
+}
     
     function viewInvoice(invoiceId) {
         // This would open a modal or new view with the invoice details
