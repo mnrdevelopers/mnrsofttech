@@ -54,8 +54,8 @@ function setupEventListeners() {
     document.getElementById('billerForm').addEventListener('submit', saveBiller);
     document.getElementById('billerSelect').addEventListener('change', loadBillerDetails);
     
-    // Auto-preview
-    document.getElementById('invoiceForm').addEventListener('input', debounce(generateInvoicePreview, 500));
+    // Auto-preview (commented out to prevent performance issues)
+    // document.getElementById('invoiceForm').addEventListener('input', debounce(generateInvoicePreview, 500));
     
     addNewItemRow();
 }
@@ -129,6 +129,7 @@ function handleAuthStateChange(user) {
         document.querySelector('.modal-backdrop')?.remove();
         loadStats();
         loadInvoices();
+        loadBillers();
     } else {
         document.getElementById('loginBtn').classList.remove('d-none');
         document.getElementById('logoutBtn').classList.add('d-none');
@@ -160,21 +161,22 @@ async function saveInvoice() {
     if (!validateForm()) return;
     
     const invoiceData = getInvoiceData();
-  try {
-    await db.collection('invoices').add({
-        ...invoiceData,
-        userId: currentUser.uid,
-        status: 'unpaid',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    
-    showToast('Invoice saved successfully!', 'success');
-    resetForm();
-    loadStats();
-    loadInvoices();
-} catch (error) {
-    handleFirebaseError(error, 'saving invoice');
+    try {
+        await db.collection('invoices').add({
+            ...invoiceData,
+            userId: currentUser.uid,
+            status: 'unpaid',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        showToast('Invoice saved successfully!', 'success');
+        resetForm();
+        loadStats();
+        loadInvoices();
+    } catch (error) {
+        handleFirebaseError(error, 'saving invoice');
+    }
 }
 
 async function updateInvoice() {
@@ -526,19 +528,29 @@ function getInvoiceData() {
         }
     });
     
+    // Ensure we have at least one valid item
+    if (items.length === 0) {
+        items.push({ 
+            description: 'Sample Item', 
+            quantity: 1, 
+            price: 0, 
+            warranty: 'no-warranty', 
+            total: 0 
+        });
+    }
+    
     return {
-        invoiceNumber: document.getElementById('invoiceNumber').value,
-        invoiceDate: document.getElementById('invoiceDate').value,
-        customerName: document.getElementById('customerName').value,
-        customerContact: document.getElementById('customerContact').value,
-        customerAddress: document.getElementById('customerAddress').value,
-        notes: document.getElementById('notes').value,
+        invoiceNumber: document.getElementById('invoiceNumber').value || 'INV-001',
+        invoiceDate: document.getElementById('invoiceDate').value || new Date().toISOString().split('T')[0],
+        customerName: document.getElementById('customerName').value || 'Customer Name',
+        customerContact: document.getElementById('customerContact').value || '',
+        customerAddress: document.getElementById('customerAddress').value || '',
+        notes: document.getElementById('notes').value || '',
         items,
         subtotal,
         grandTotal: subtotal,
-        // Add default billing cycle to avoid errors
         billingCycle: 'daily',
-        monthlyServices: [] // Add empty array to prevent errors
+        monthlyServices: []
     };
 }
 
@@ -573,7 +585,9 @@ function resetForm() {
     document.getElementById('updateInvoiceBtn').classList.add('d-none');
     currentEditingInvoice = null;
     addNewItemRow();
-    generateInvoicePreview();
+    
+    // Clear preview instead of generating with empty data
+    document.getElementById('invoicePreview').innerHTML = '<p class="text-muted">Preview will appear here after filling the form</p>';
 }
 
 function showToast(message, type = 'info') {
@@ -592,11 +606,9 @@ function showToast(message, type = 'info') {
     }, 5000);
 }
 
-function generateInvoicePreview() {
-    const billingCycle = document.getElementById('billingCycle').value;
-    const invoiceData = getInvoiceData();
-    
-    const invoiceHTML = createInvoiceHTML(invoiceData);
+function generateInvoicePreview(invoiceData = null) {
+    const data = invoiceData || getInvoiceData();
+    const invoiceHTML = createInvoiceHTML(data);
     const previewContainer = document.getElementById('invoicePreview');
     previewContainer.innerHTML = invoiceHTML;
 }
@@ -846,5 +858,65 @@ function handleFirebaseError(error, operation) {
     }
     
     showToast(message, 'error');
- }
+}
+
+async function updateInvoice() {
+    if (!currentEditingInvoice || !validateForm()) return;
+    
+    const invoiceData = getInvoiceData();
+    try {
+        await db.collection('invoices').doc(currentEditingInvoice).update({
+            ...invoiceData,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        showToast('Invoice updated successfully!', 'success');
+        resetForm();
+        loadStats();
+        loadInvoices();
+    } catch (error) {
+        handleFirebaseError(error, 'updating invoice');
+    }
+}
+
+async function loadStats() {
+    if (!currentUser) return;
+    
+    try {
+        const snapshot = await db.collection('invoices')
+            .where('userId', '==', currentUser.uid)
+            .get();
+        
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        
+        let todayIncome = 0;
+        let weekIncome = 0;
+        let monthIncome = 0;
+        
+        snapshot.forEach(doc => {
+            const invoice = doc.data();
+            const invoiceDate = new Date(invoice.invoiceDate);
+            const amount = invoice.grandTotal || 0;
+            
+            if (invoiceDate >= todayStart) {
+                todayIncome += amount;
+            }
+            if (invoiceDate >= weekStart) {
+                weekIncome += amount;
+            }
+            if (invoiceDate >= monthStart) {
+                monthIncome += amount;
+            }
+        });
+        
+        document.getElementById('todayIncome').textContent = '₹' + todayIncome.toFixed(2);
+        document.getElementById('weekIncome').textContent = '₹' + weekIncome.toFixed(2);
+        document.getElementById('monthIncome').textContent = '₹' + monthIncome.toFixed(2);
+        
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
 }
