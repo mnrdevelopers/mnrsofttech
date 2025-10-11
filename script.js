@@ -160,22 +160,21 @@ async function saveInvoice() {
     if (!validateForm()) return;
     
     const invoiceData = getInvoiceData();
-    try {
-        await db.collection('invoices').add({
-            ...invoiceData,
-            userId: currentUser.uid,
-            status: 'unpaid',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        showToast('Invoice saved successfully!', 'success');
-        resetForm();
-        loadStats();
-        loadInvoices();
-    } catch (error) {
-        showToast('Error saving invoice: ' + error.message, 'error');
-    }
+  try {
+    await db.collection('invoices').add({
+        ...invoiceData,
+        userId: currentUser.uid,
+        status: 'unpaid',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    showToast('Invoice saved successfully!', 'success');
+    resetForm();
+    loadStats();
+    loadInvoices();
+} catch (error) {
+    handleFirebaseError(error, 'saving invoice');
 }
 
 async function updateInvoice() {
@@ -521,7 +520,7 @@ function getInvoiceData() {
         const warranty = row.querySelector('.item-warranty').value;
         const total = quantity * price;
         
-        if (description) {
+        if (description && description.trim() !== '') {
             items.push({ description, quantity, price, warranty, total });
             subtotal += total;
         }
@@ -536,7 +535,10 @@ function getInvoiceData() {
         notes: document.getElementById('notes').value,
         items,
         subtotal,
-        grandTotal: subtotal
+        grandTotal: subtotal,
+        // Add default billing cycle to avoid errors
+        billingCycle: 'daily',
+        monthlyServices: [] // Add empty array to prevent errors
     };
 }
 
@@ -608,143 +610,120 @@ function createInvoiceHTML(invoiceData) {
         }) : '';
     
     let itemsHTML = '';
-    let periodInfo = '';
     
-    if (invoiceData.billingCycle === 'monthly') {
-        // Monthly billing template
-        const startDate = invoiceData.startDate ? 
-            new Date(invoiceData.startDate).toLocaleDateString('en-IN') : '';
-        const endDate = invoiceData.endDate ? 
-            new Date(invoiceData.endDate).toLocaleDateString('en-IN') : '';
-        
-        periodInfo = `
-            <div class="invoice-period">
-                <strong>Billing Period:</strong> ${startDate} to ${endDate}
-            </div>
-        `;
-        
-        itemsHTML = `
-            <table class="invoice-table">
-                <thead>
+    // Always use the daily billing template since we don't have monthly billing in form
+    itemsHTML = `
+        <table class="invoice-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Warranty</th>
+                    <th class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${invoiceData.items.map(item => `
                     <tr>
-                        <th>Service Description</th>
-                        <th class="text-right">Monthly Amount</th>
+                        <td>${item.description}</td>
+                        <td>${item.quantity}</td>
+                        <td>₹${item.price.toFixed(2)}</td>
+                        <td>
+                            ${item.warranty && item.warranty !== 'no-warranty' ? 
+                                `<span class="warranty-badge">
+                                    ${item.warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
+                                </span>` : 'No Warranty'}
+                        </td>
+                        <td class="text-right">₹${item.total.toFixed(2)}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    ${invoiceData.monthlyServices.map(service => `
-                        <tr>
-                            <td>${service.description}</td>
-                            <td class="text-right">₹${service.price.toFixed(2)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-    } else {
-        // Daily billing template
-        itemsHTML = `
-            <table class="invoice-table">
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th>Qty</th>
-                        <th>Price</th>
-                        <th class="text-right">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${invoiceData.items.map(item => `
-                        <tr>
-                            <td>
-                                ${item.description}
-                                ${item.warranty && item.warranty !== 'no-warranty' ? 
-                                    `<span class="warranty-badge">
-                                        Warranty: ${item.warranty.replace('-', ' ').replace(/(^|\s)\S/g, l => l.toUpperCase())}
-                                    </span>` : ''}
-                            </td>
-                            <td>${item.quantity}</td>
-                            <td>₹${item.price.toFixed(2)}</td>
-                            <td class="text-right">₹${item.total.toFixed(2)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-    }
+                `).join('')}
+            </tbody>
+        </table>
+    `;
     
     return `
         <div class="invoice-template">
             <div class="invoice-header">
-                <div class="invoice-title">INVOICE</div>
-                <div class="invoice-meta">
-                    <div class="invoice-number">Invoice #${invoiceData.invoiceNumber || '---'}</div>
-                    <div class="invoice-date">Date: ${formattedDate}</div>
-                    <div class="billing-cycle">${invoiceData.billingCycle === 'monthly' ? 'Monthly Billing' : 'One-Time Billing'}</div>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="invoice-title">INVOICE</div>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="invoice-number"><strong>Invoice #:</strong> ${invoiceData.invoiceNumber || '---'}</div>
+                        <div class="invoice-date"><strong>Date:</strong> ${formattedDate}</div>
+                    </div>
                 </div>
             </div>
             
-            <div class="invoice-company">
-                <div class="company-name">MNR SoftTech Solutions</div>
-                <div class="company-details">
-                    Computer Software & Hardware Services<br>
-                    Contact: Maniteja (mnrdeveloper11@gmail.com)<br>
-                    Phone: +91 7416006394 (Whatsapp only)
+            <div class="row mt-4">
+                <div class="col-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <strong>From:</strong>
+                        </div>
+                        <div class="card-body">
+                            <strong>MNR SoftTech Solutions</strong><br>
+                            Computer Software & Hardware Services<br>
+                            Email: mnrdeveloper11@gmail.com<br>
+                            Phone: +91 7416006394
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <strong>Bill To:</strong>
+                        </div>
+                        <div class="card-body">
+                            <strong>${invoiceData.customerName || 'Customer Name'}</strong><br>
+                            ${invoiceData.customerContact ? 'Phone: ' + invoiceData.customerContact + '<br>' : ''}
+                            ${invoiceData.customerAddress || 'Address not provided'}
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <div class="invoice-customer">
-                <div class="customer-title">BILL TO:</div>
-                <div class="customer-details">
-                    ${invoiceData.customerName || 'Customer Name'}<br>
-                    ${invoiceData.customerContact ? 'Phone: ' + invoiceData.customerContact + '<br>' : ''}
-                    ${invoiceData.customerAddress || 'Address not provided'}
-                </div>
+            <div class="mt-4">
+                ${itemsHTML}
             </div>
             
-            ${periodInfo}
-            ${itemsHTML}
-            
-            <div class="invoice-totals">
-                <div class="invoice-totals-row invoice-grand-total">
-                    <span class="invoice-totals-label">Total Amount:</span>
-                    <span class="invoice-totals-value">₹${invoiceData.grandTotal.toFixed(2)}</span>
+            <div class="row mt-4">
+                <div class="col-8"></div>
+                <div class="col-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <strong>Subtotal:</strong>
+                                <span>₹${invoiceData.subtotal.toFixed(2)}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <strong>Total Amount:</strong>
+                                <span class="invoice-grand-total">₹${invoiceData.grandTotal.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            ${invoiceData.billingCycle === 'daily' ? `
-                <div class="warranty-disclaimer">
-                    <h3>Warranty Terms</h3>
-                    <p>Warranty covers manufacturing defects only. Does not cover:</p>
-                    <ul>
-                        <li>Physical damage or liquid damage</li>
-                        <li>Unauthorized repairs or modifications</li>
-                        <li>Software issues not related to hardware</li>
-                    </ul>
-                    <p>Original invoice required for all warranty claims.</p>
-                </div>
-            ` : `
-                <div class="warranty-disclaimer">
-                    <h3>Monthly Service Terms</h3>
-                    <p>This is a recurring monthly service invoice. Services are billed in advance.</p>
-                    <ul>
-                        <li>Payment due upon receipt</li>
-                        <li>Late payments may incur fees</li>
-                        <li>Services may be suspended for non-payment</li>
-                    </ul>
-                </div>
-            `}
             
             ${invoiceData.notes ? `
-                <div class="invoice-notes">
-                    <div class="invoice-notes-title">Notes:</div>
-                    <div class="invoice-notes-content">${invoiceData.notes}</div>
+                <div class="mt-4">
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <strong>Notes:</strong>
+                        </div>
+                        <div class="card-body">
+                            ${invoiceData.notes}
+                        </div>
+                    </div>
                 </div>
             ` : ''}
             
-            <div style="margin-top: 3rem; text-align: center; color: #666; font-size: 0.9rem;">
-                Thank you for your business!<br>
-                MNR SoftTech Solutions
+            <div class="mt-5 pt-4 border-top text-center">
+                <p class="text-muted">
+                    Thank you for your business!<br>
+                    <strong>MNR SoftTech Solutions</strong>
+                </p>
             </div>
         </div>
     `;
@@ -845,4 +824,26 @@ function showPreview() {
     
     generateInvoicePreview();
     new bootstrap.Modal(document.getElementById('previewModal')).show();
+}
+
+// Add this utility function for better error handling
+function handleFirebaseError(error, operation) {
+    console.error(`Error during ${operation}:`, error);
+    let message = `Error ${operation}: `;
+    
+    switch (error.code) {
+        case 'permission-denied':
+            message += 'You do not have permission to perform this operation.';
+            break;
+        case 'unauthenticated':
+            message += 'Please login to continue.';
+            break;
+        case 'not-found':
+            message += 'Requested data not found.';
+            break;
+        default:
+            message += error.message;
+    }
+    
+    showToast(message, 'error');
 }
