@@ -719,3 +719,34 @@ footer p {
 .invoice-checkbox {
     transform: scale(1.2);
 }
+
+/* Bulk Payment Styles */
+#bulkPaymentTable th:first-child,
+#bulkPaymentTable td:first-child {
+    width: 50px;
+    text-align: center;
+}
+
+.bulk-invoice-checkbox {
+    transform: scale(1.2);
+}
+
+#bulkPaymentTable tfoot {
+    font-size: 1.1em;
+}
+
+/* Payment status colors */
+.badge-bg-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.badge-bg-success {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.badge-bg-danger {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
