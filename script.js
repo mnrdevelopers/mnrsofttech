@@ -1,3 +1,5 @@
+let currentEditingInvoiceId = null;
+
 async function generateInvoiceNumber() {
     try {
         // Get all invoices to find the highest number
@@ -242,8 +244,15 @@ function collectInvoiceData() {
         nextBillingDate: paymentType === 'monthly' ? nextBillingDate : null,
         amountPaid,
         balanceDue,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        // Include the original invoice ID if we're editing
+        originalInvoiceId: currentEditingInvoiceId
     };
+}
+
+// Add a function to check if we're creating a new invoice or editing
+function isEditingInvoice() {
+    return currentEditingInvoiceId !== null;
 }
 
 async function saveInvoiceToFirebase() {
@@ -268,12 +277,14 @@ async function saveInvoiceToFirebase() {
         }
         
         // Check if invoice number already exists (if we're creating new, not editing)
+        // We'll assume if the current invoice number matches the one in the form and we're editing, it's okay
         const existingDoc = await db.collection('invoices').doc(invoiceData.invoiceNumber).get();
-        if (existingDoc.exists) {
-            const response = confirm(`Invoice number ${invoiceData.invoiceNumber} already exists. Do you want to overwrite it? Click Cancel to generate a new number.`);
+        const isEditing = existingDoc.exists;
+        
+        if (isEditing) {
+            // If editing existing invoice, ask for confirmation
+            const response = confirm(`Invoice ${invoiceData.invoiceNumber} already exists. Do you want to update it?`);
             if (!response) {
-                // Generate new number and return
-                generateNewInvoiceNumber();
                 return;
             }
         }
@@ -281,7 +292,7 @@ async function saveInvoiceToFirebase() {
         // Show loading state
         setFormLoading(true);
         setButtonLoading(saveBtn, true);
-        showLoading('Saving invoice...');
+        showLoading(isEditing ? 'Updating invoice...' : 'Saving invoice...');
         
         // Ensure dates are stored properly
         const invoiceToSave = {
@@ -301,7 +312,17 @@ async function saveInvoiceToFirebase() {
         setFormLoading(false);
         setButtonLoading(saveBtn, false);
         
-        alert('Invoice saved successfully!');
+        // Show success message
+        showAlert(`Invoice ${isEditing ? 'updated' : 'saved'} successfully!`, 'success');
+        
+        // Reset form after successful save (only for new invoices, not when editing)
+        if (!isEditing) {
+            resetForm();
+        } else {
+            // If editing, just show success message but don't reset the form
+            // This allows user to make further changes if needed
+            console.log('Invoice updated successfully, form not reset for further editing');
+        }
         
         // Refresh dashboard
         updateDashboard();
@@ -371,6 +392,9 @@ async function loadInvoice(invoiceId) {
         
         const invoice = doc.data();
         console.log('Loading invoice data:', invoice);
+        
+        // Store the original invoice ID for editing detection
+        currentEditingInvoiceId = invoiceId;
         
         // Populate form fields
         document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
@@ -781,4 +805,70 @@ function setFormLoading(isLoading) {
         form.classList.remove('form-loading');
         setButtonLoading(saveBtn, false);
     }
+}
+
+function resetForm() {
+    // Clear form fields
+    document.getElementById('invoiceForm').reset();
+    
+    // Set today's date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invoiceDate').value = today;
+    
+    // Clear items container and add one empty row
+    const itemsContainer = document.getElementById('itemsContainer');
+    itemsContainer.innerHTML = '';
+    addNewItemRow();
+    
+    // Hide monthly billing fields
+    document.getElementById('monthlyBillingFields').style.display = 'none';
+    document.getElementById('partialPaymentFields').style.display = 'none';
+    
+    // Set default payment type and status
+    document.getElementById('paymentType').value = 'one-time';
+    document.getElementById('paymentStatus').value = 'unpaid';
+    
+    // Clear editing state
+    currentEditingInvoiceId = null;
+    
+    // Generate new invoice number
+    generateNewInvoiceNumber();
+    
+    // Clear preview
+    document.getElementById('invoicePreview').innerHTML = `
+        <div class="preview-placeholder">
+            <i class="fas fa-receipt"></i>
+            <p>Your invoice will appear here</p>
+        </div>
+    `;
+    
+    console.log('Form reset for new invoice');
+}
+
+// Add showAlert function to script.js (if not already there)
+function showAlert(message, type) {
+    // Remove any existing alerts first
+    const existingAlerts = document.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => alert.remove());
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add alert to the top of the main content
+    const main = document.querySelector('main .container');
+    if (main) {
+        main.insertBefore(alertDiv, main.firstChild);
+    }
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
