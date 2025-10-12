@@ -283,86 +283,88 @@ function previewConsolidatedInvoice() {
     const consolidatedNumber = `CON-${year}${month.toString().padStart(2, '0')}-${customer.substring(0, 3).toUpperCase()}`;
     
     const previewHTML = `
-        <div class="invoice-template">
-            <div class="invoice-header">
-                <div class="invoice-title">CONSOLIDATED MONTHLY INVOICE</div>
-                <div class="invoice-meta">
-                    <div class="invoice-number">Invoice #${consolidatedNumber}</div>
-                    <div class="invoice-date">Date: ${new Date().toLocaleDateString('en-IN')}</div>
+        <div class="invoice-template" style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; background: white; box-sizing: border-box;">
+            <div class="invoice-header" style="display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #3498db; padding-bottom: 15px;">
+                <div class="invoice-title" style="font-size: 28px; color: #2c3e50; font-weight: bold;">CONSOLIDATED INVOICE <span class="badge bg-warning">Monthly</span></div>
+                <div class="invoice-meta" style="text-align: right;">
+                    <div class="invoice-number" style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">Invoice #${consolidatedNumber}</div>
+                    <div class="invoice-date" style="color: #666; font-size: 14px;">Date: ${new Date().toLocaleDateString('en-IN')}</div>
                 </div>
             </div>
             
-            <div class="invoice-company">
-                <div class="company-name">MNR SoftTech Solutions</div>
-                <div class="company-details">
+            <div class="invoice-company" style="margin-bottom: 30px;">
+                <div class="company-name" style="font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">MNR SoftTech Solutions</div>
+                <div class="company-details" style="color: #666; line-height: 1.5; font-size: 14px;">
                     Computer Software & Hardware Services<br>
                     Contact: Maniteja (mnrdeveloper11@gmail.com)<br>
                     Phone: +91 7416006394 (Whatsapp only)
                 </div>
             </div>
             
-            <div class="invoice-customer">
-                <div class="customer-title">BILL TO:</div>
-                <div class="customer-details">
+            <div class="invoice-customer" style="margin-bottom: 30px; background-color: #f9f9f9; padding: 15px; border-radius: 4px; border-left: 4px solid #3498db;">
+                <div class="customer-title" style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 16px;">BILL TO:</div>
+                <div class="customer-details" style="color: #333; line-height: 1.5; font-size: 14px;">
                     ${customer}<br>
-                    Billing Period: ${monthName} ${year}
+                    <strong>Billing Period:</strong> ${monthName} ${year}
                 </div>
             </div>
             
-            <div class="monthly-billing-info">
-                <strong>Monthly Service Summary</strong><br>
-                This invoice consolidates ${selectedInvoices.length} daily service invoices for ${monthName} ${year}
+            <div style="margin-bottom: 20px; padding: 12px; background: #fff3cd; border-radius: 4px; border-left: 4px solid #ffc107;">
+                <strong style="color: #856404;">Monthly Service Summary</strong><br>
+                <span style="color: #856404; font-size: 14px;">
+                    This invoice consolidates ${selectedInvoices.length} daily service invoices for ${monthName} ${year}
+                </span>
             </div>
             
-            <table class="invoice-table">
+            <table class="invoice-table" style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Original Invoice #</th>
-                        <th>Service Description</th>
-                        <th class="text-right">Amount</th>
+                        <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd;">Date</th>
+                        <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd;">Original Invoice #</th>
+                        <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd;">Service Description</th>
+                        <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: right; border: 1px solid #ddd; width: 120px;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${selectedInvoices.map(invoice => `
                         <tr>
-                            <td>${invoice.date}</td>
-                            <td>${invoice.invoiceNumber}</td>
-                            <td>Daily Computer Services & Support</td>
-                            <td class="text-right">₹${invoice.amount.toFixed(2)}</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">${invoice.date}</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">${invoice.invoiceNumber}</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">Daily Computer Services & Support</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; vertical-align: top;">₹${invoice.amount.toFixed(2)}</td>
                         </tr>
                     `).join('')}
                     <tr style="background-color: #f8f9fa;">
-                        <td colspan="3" class="text-right"><strong>Monthly Total:</strong></td>
-                        <td class="text-right"><strong>₹${totalAmount.toFixed(2)}</strong></td>
+                        <td colspan="3" style="padding: 12px; text-align: right; font-weight: bold; border-bottom: 1px solid #ddd;">Monthly Total:</td>
+                        <td style="padding: 12px; text-align: right; font-weight: bold; border-bottom: 1px solid #ddd;">₹${totalAmount.toFixed(2)}</td>
                     </tr>
                 </tbody>
             </table>
             
-            <div class="invoice-totals">
-                <div class="invoice-totals-row invoice-grand-total">
-                    <span class="invoice-totals-label">Amount Due:</span>
-                    <span class="invoice-totals-value">₹${totalAmount.toFixed(2)}</span>
+            <div class="invoice-totals" style="margin-left: auto; width: 300px; border-top: 2px solid #3498db; padding-top: 15px;">
+                <div class="invoice-totals-row invoice-grand-total" style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 8px; border-top: 1px solid #ddd;">
+                    <span class="invoice-totals-label" style="font-size: 16px; font-weight: bold;">Amount Due:</span>
+                    <span class="invoice-totals-value" style="font-size: 16px; font-weight: bold; color: #3498db;">₹${totalAmount.toFixed(2)}</span>
                 </div>
             </div>
             
-            <div class="warranty-disclaimer">
-                <h3>Service Terms</h3>
-                <p>This consolidated invoice includes all daily services provided during ${monthName} ${year}. Payment is due within 15 days of invoice date.</p>
-                <p>For detailed service descriptions, please refer to individual daily invoices.</p>
+            <div class="warranty-disclaimer" style="margin: 25px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #3498db; border-radius: 4px;">
+                <h3 style="margin-top: 0; color: #2c3e50; font-size: 16px;">Service Terms</h3>
+                <p style="margin-bottom: 8px; font-size: 14px;">This consolidated invoice includes all daily services provided during ${monthName} ${year}. Payment is due within 15 days of invoice date.</p>
+                <p style="margin: 0; font-size: 14px;">For detailed service descriptions, please refer to individual daily invoices.</p>
             </div>
             
-            <div class="invoice-notes">
-                <div class="invoice-notes-title">Notes:</div>
-                <div class="invoice-notes-content">
+            <div class="invoice-notes" style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee;">
+                <div class="invoice-notes-title" style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">Notes:</div>
+                <div class="invoice-notes-content" style="color: #666; font-size: 14px; line-height: 1.5;">
                     Thank you for your continued business! This consolidated invoice simplifies your monthly billing process.
                     Individual daily invoices are available upon request.
                 </div>
             </div>
             
-            <div style="margin-top: 3rem; text-align: center; color: #666; font-size: 0.9rem;">
+            <div style="margin-top: 40px; text-align: center; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #eee;">
                 Consolidated Invoice Generated on ${new Date().toLocaleDateString('en-IN')}<br>
-                MNR SoftTech Solutions
+                <strong>MNR SoftTech Solutions</strong>
             </div>
         </div>
     `;
@@ -383,39 +385,321 @@ function downloadConsolidatedPDF() {
     const monthName = new Date(2000, month - 1).toLocaleString('en-IN', { month: 'long' });
     const filename = `Monthly_Invoice_${customer}_${monthName}_${year}.pdf`;
     
+    // Ensure element is properly styled for PDF
+    const originalDisplay = element.style.display;
+    const originalWidth = element.style.width;
+    element.style.display = 'block';
+    element.style.width = '210mm';
+    
     const opt = {
         margin: 10,
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { 
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
-    html2pdf().set(opt).from(element).save();
+    html2pdf().set(opt).from(element).save().then(() => {
+        // Restore original styles
+        element.style.display = originalDisplay;
+        element.style.width = originalWidth;
+    });
 }
 
 function printConsolidatedInvoice() {
-    const printContent = document.getElementById('consolidatedInvoicePreview').innerHTML;
+    const selectedInvoices = getSelectedInvoices();
+    const customer = document.getElementById('consolidateCustomer').value;
+    const month = document.getElementById('consolidateMonth').value;
+    const year = document.getElementById('consolidateYear').value;
+    
+    if (selectedInvoices.length === 0) {
+        showAlert('No invoices selected for printing', 'warning');
+        return;
+    }
+    
+    const totalAmount = selectedInvoices.reduce((sum, invoice) => sum + invoice.amount, 0);
+    const monthName = new Date(2000, month - 1).toLocaleString('en-IN', { month: 'long' });
+    const consolidatedNumber = `CON-${year}${month.toString().padStart(2, '0')}-${customer.substring(0, 3).toUpperCase()}`;
+    
+    const printHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MNR SoftTech Solutions - Consolidated Invoice ${consolidatedNumber}</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: white;
+            color: #333;
+            line-height: 1.4;
+        }
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            background: white;
+        }
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        .invoice-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .invoice-meta {
+            text-align: right;
+        }
+        .invoice-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .invoice-date {
+            color: #666;
+            font-size: 14px;
+        }
+        .company-info {
+            margin-bottom: 25px;
+        }
+        .company-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .company-details {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .customer-info {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #3498db;
+        }
+        .customer-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        .customer-details {
+            color: #333;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        .invoice-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        .invoice-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .invoice-totals {
+            margin-left: auto;
+            width: 300px;
+            border-top: 2px solid #3498db;
+            padding-top: 15px;
+        }
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .grand-total {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .warranty-section {
+            margin: 25px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+        }
+        .notes-section {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .payment-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #ffc107;
+            color: #212529;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+        .total-amount {
+            color: #3498db !important;
+            font-weight: bold;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .invoice-container {
+                width: 100%;
+                margin: 0;
+                padding: 15mm;
+                border: none;
+                box-shadow: none;
+            }
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <div class="invoice-header">
+            <div class="invoice-title">
+                CONSOLIDATED INVOICE 
+                <span class="payment-badge">Monthly</span>
+            </div>
+            <div class="invoice-meta">
+                <div class="invoice-number">Invoice #${consolidatedNumber}</div>
+                <div class="invoice-date">Date: ${new Date().toLocaleDateString('en-IN')}</div>
+            </div>
+        </div>
+        
+        <div class="company-info">
+            <div class="company-name">MNR SoftTech Solutions</div>
+            <div class="company-details">
+                Computer Software & Hardware Services<br>
+                Contact: Maniteja (mnrdeveloper11@gmail.com)<br>
+                Phone: +91 7416006394 (Whatsapp only)
+            </div>
+        </div>
+        
+        <div class="customer-info">
+            <div class="customer-title">BILL TO:</div>
+            <div class="customer-details">
+                ${customer}<br>
+                <strong>Billing Period:</strong> ${monthName} ${year}
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107;">
+            <strong>Monthly Service Summary</strong><br>
+            This invoice consolidates ${selectedInvoices.length} daily service invoices for ${monthName} ${year}
+        </div>
+        
+        <table class="invoice-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Original Invoice #</th>
+                    <th>Service Description</th>
+                    <th class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${selectedInvoices.map(invoice => `
+                    <tr>
+                        <td>${invoice.date}</td>
+                        <td>${invoice.invoiceNumber}</td>
+                        <td>Daily Computer Services & Support</td>
+                        <td class="text-right">₹${invoice.amount.toFixed(2)}</td>
+                    </tr>
+                `).join('')}
+                <tr style="background-color: #f8f9fa;">
+                    <td colspan="3" style="text-align: right; font-weight: bold; padding: 12px;">Monthly Total:</td>
+                    <td class="text-right" style="font-weight: bold; padding: 12px;">₹${totalAmount.toFixed(2)}</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="invoice-totals">
+            <div class="totals-row grand-total">
+                <span>Amount Due:</span>
+                <span class="total-amount">₹${totalAmount.toFixed(2)}</span>
+            </div>
+        </div>
+        
+        <div class="warranty-section">
+            <h3 style="margin-top: 0; color: #2c3e50;">Service Terms</h3>
+            <p>This consolidated invoice includes all daily services provided during ${monthName} ${year}. Payment is due within 15 days of invoice date.</p>
+            <p>For detailed service descriptions, please refer to individual daily invoices.</p>
+        </div>
+        
+        <div class="notes-section">
+            <div style="font-weight: bold; margin-bottom: 8px;">Notes:</div>
+            <div style="color: #666;">
+                Thank you for your continued business! This consolidated invoice simplifies your monthly billing process.
+                Individual daily invoices are available upon request.
+            </div>
+        </div>
+        
+        <div class="footer">
+            Consolidated Invoice Generated on ${new Date().toLocaleDateString('en-IN')}<br>
+            <strong>MNR SoftTech Solutions</strong>
+        </div>
+    </div>
+    
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+                setTimeout(function() {
+                    window.close();
+                }, 1000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>
+    `;
     
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Consolidated Monthly Invoice</title>
-            <style>
-                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
-                @media print {
-                    body { margin: 0; padding: 0; }
-                    @page { size: A4; margin: 15mm; }
-                }
-            </style>
-        </head>
-        <body>${printContent}</body>
-        </html>
-    `);
+    printWindow.document.write(printHTML);
     printWindow.document.close();
-    printWindow.print();
 }
 
 async function saveConsolidatedInvoice() {
