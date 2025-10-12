@@ -273,17 +273,21 @@ function printViewedInvoice() {
 }
 
 // Generate print HTML for viewed invoice
+// Generate print HTML for viewed invoice
 function generatePrintHTML(invoice) {
     const formattedDate = formatInvoiceDateForDisplay(invoice);
     
-    // Payment status text
-    const paymentTexts = {
-        'unpaid': 'Unpaid',
-        'paid': 'Paid',
-        'partial': 'Partial Payment'
+    // Payment status text and color
+    const paymentStatusConfig = {
+        'unpaid': { text: 'Unpaid', color: '#dc3545', bgColor: '#dc3545' },
+        'paid': { text: 'Paid', color: '#28a745', bgColor: '#28a745' },
+        'partial': { text: 'Partial Payment', color: '#ffc107', bgColor: '#ffc107' }
     };
     
-    const paymentText = paymentTexts[invoice.paymentStatus] || '';
+    const statusConfig = paymentStatusConfig[invoice.paymentStatus] || paymentStatusConfig.unpaid;
+    const paymentText = statusConfig.text;
+    const statusColor = statusConfig.color;
+    const statusBgColor = statusConfig.bgColor;
 
     return `
 <!DOCTYPE html>
@@ -427,11 +431,12 @@ function generatePrintHTML(invoice) {
         .payment-badge {
             display: inline-block;
             padding: 4px 12px;
-            background: #dc3545;
+            background: ${statusBgColor};
             color: white;
             border-radius: 4px;
             font-size: 12px;
             margin-left: 10px;
+            font-weight: 500;
         }
         .warranty-badge {
             display: inline-block;
@@ -441,6 +446,19 @@ function generatePrintHTML(invoice) {
             border-radius: 12px;
             font-size: 11px;
             margin-left: 8px;
+            font-weight: 500;
+        }
+        .paid-amount {
+            color: #28a745 !important;
+            font-weight: bold;
+        }
+        .balance-due {
+            color: #dc3545 !important;
+            font-weight: bold;
+        }
+        .total-amount {
+            color: #3498db !important;
+            font-weight: bold;
         }
         
         @media print {
@@ -535,16 +553,16 @@ function generatePrintHTML(invoice) {
                 ${invoice.amountPaid > 0 ? `
                     <div class="totals-row">
                         <span>Amount Paid:</span>
-                        <span style="color: #2e7d32;"><strong>₹${invoice.amountPaid.toFixed(2)}</strong></span>
+                        <span class="paid-amount">₹${invoice.amountPaid.toFixed(2)}</span>
                     </div>
                     <div class="totals-row">
                         <span>Balance Due:</span>
-                        <span style="color: #c62828;"><strong>₹${invoice.balanceDue.toFixed(2)}</strong></span>
+                        <span class="balance-due">₹${invoice.balanceDue.toFixed(2)}</span>
                     </div>
                 ` : ''}
                 <div class="totals-row grand-total">
                     <span>${invoice.amountPaid > 0 ? 'Total Amount' : 'Amount Due'}:</span>
-                    <span style="color: #3498db;">₹${invoice.grandTotal.toFixed(2)}</span>
+                    <span class="total-amount">₹${invoice.grandTotal.toFixed(2)}</span>
                 </div>
             </div>
         ` : '<p style="text-align: center; padding: 40px; color: #666;">No items</p>'}
