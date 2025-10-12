@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function updateDashboard() {
     try {
+        // Show loading state for dashboard cards
+        document.getElementById('totalIncome').textContent = 'Loading...';
+        document.getElementById('pendingAmount').textContent = 'Loading...';
+        document.getElementById('totalCustomers').textContent = 'Loading...';
+        document.getElementById('monthlyCustomers').textContent = 'Loading...';
+        
         const snapshot = await db.collection('invoices').get();
         let totalIncome = 0;
         let pendingAmount = 0;
@@ -89,6 +95,12 @@ async function updateDashboard() {
         
     } catch (error) {
         console.error('Error updating dashboard:', error);
+        
+        // Set error state
+        document.getElementById('totalIncome').textContent = 'Error';
+        document.getElementById('pendingAmount').textContent = 'Error';
+        document.getElementById('totalCustomers').textContent = 'Error';
+        document.getElementById('monthlyCustomers').textContent = 'Error';
     }
 }
 
