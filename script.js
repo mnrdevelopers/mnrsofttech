@@ -193,6 +193,8 @@ function collectInvoiceData() {
 }
 
 async function saveInvoiceToFirebase() {
+    const saveBtn = document.getElementById('saveInvoiceBtn');
+    
     try {
         const invoiceData = collectInvoiceData();
         
@@ -211,6 +213,11 @@ async function saveInvoiceToFirebase() {
             return;
         }
         
+        // Show loading state
+        setFormLoading(true);
+        setButtonLoading(saveBtn, true);
+        showLoading('Saving invoice...');
+        
         // Ensure dates are stored properly
         const invoiceToSave = {
             ...invoiceData,
@@ -224,6 +231,11 @@ async function saveInvoiceToFirebase() {
         // Save to Firestore
         await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
         
+        // Hide loading
+        hideLoading();
+        setFormLoading(false);
+        setButtonLoading(saveBtn, false);
+        
         alert('Invoice saved successfully!');
         
         // Refresh dashboard
@@ -231,16 +243,35 @@ async function saveInvoiceToFirebase() {
         
     } catch (error) {
         console.error('Error saving invoice:', error);
+        
+        // Hide loading on error
+        hideLoading();
+        setFormLoading(false);
+        setButtonLoading(saveBtn, false);
+        
         alert('Error saving invoice: ' + error.message);
     }
 }
 
 async function loadInvoice(invoiceId) {
+    // Validate invoice ID
+    if (!invoiceId || invoiceId.trim() === '') {
+        console.error('loadInvoice called with empty invoice ID');
+        showAlert('Error: Invalid invoice ID', 'danger');
+        return;
+    }
+    
     try {
+        // Show loading for editing
+        showLoading('Loading invoice...');
+        setFormLoading(true);
+        
         const doc = await db.collection('invoices').doc(invoiceId).get();
         
         if (!doc.exists) {
             alert('Invoice not found');
+            hideLoading();
+            setFormLoading(false);
             return;
         }
         
@@ -305,8 +336,17 @@ async function loadInvoice(invoiceId) {
         // Generate preview
         generateInvoicePreview();
         
+        // Hide loading
+        hideLoading();
+        setFormLoading(false);
+        
     } catch (error) {
         console.error('Error loading invoice:', error);
+        
+        // Hide loading on error
+        hideLoading();
+        setFormLoading(false);
+        
         alert('Error loading invoice: ' + error.message);
     }
 }
@@ -500,30 +540,41 @@ function formatWarrantyText(warranty) {
 }
 
 function downloadAsPDF() {
-    generateInvoicePreview();
-    const element = document.getElementById('invoicePreview');
-    const opt = {
-        margin: 10,
-        filename: `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+    showLoading('Generating PDF...');
     
-    // Generate PDF
-    html2pdf().set(opt).from(element).save();
+    setTimeout(() => {
+        generateInvoicePreview();
+        const element = document.getElementById('invoicePreview');
+        const opt = {
+            margin: 10,
+            filename: `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        // Generate PDF
+        html2pdf().set(opt).from(element).save().then(() => {
+            hideLoading();
+        });
+    }, 500);
 }
 
 function downloadAsJPEG() {
-    generateInvoicePreview();
-    const element = document.getElementById('invoicePreview');
+    showLoading('Generating JPEG...');
     
-    html2canvas(element).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.jpg`;
-        link.href = canvas.toDataURL('image/jpeg', 0.9);
-        link.click();
-    });
+    setTimeout(() => {
+        generateInvoicePreview();
+        const element = document.getElementById('invoicePreview');
+        
+        html2canvas(element).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.click();
+            hideLoading();
+        });
+    }, 500);
 }
 
 function printInvoice() {
@@ -595,4 +646,45 @@ function formatInvoiceDateForDisplay(invoice) {
         return new Date(invoice.createdAt).toLocaleDateString('en-IN');
     }
     return 'N/A';
+}
+
+// Add these loading functions at the top of script.js
+function showLoading(message = 'Processing...') {
+    const loadingHTML = `
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">${message}</div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', loadingHTML);
+}
+
+function hideLoading() {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) {
+        loadingOverlay.remove();
+    }
+}
+
+function setButtonLoading(button, isLoading) {
+    if (isLoading) {
+        button.disabled = true;
+        button.classList.add('btn-loading');
+    } else {
+        button.disabled = false;
+        button.classList.remove('btn-loading');
+    }
+}
+
+function setFormLoading(isLoading) {
+    const form = document.getElementById('invoiceForm');
+    const saveBtn = document.getElementById('saveInvoiceBtn');
+    
+    if (isLoading) {
+        form.classList.add('form-loading');
+        setButtonLoading(saveBtn, true);
+    } else {
+        form.classList.remove('form-loading');
+        setButtonLoading(saveBtn, false);
+    }
 }
