@@ -3,6 +3,7 @@ let currentInvoices = [];
 let currentPage = 1;
 const invoicesPerPage = 10;
 let deleteInvoiceId = null;
+let currentViewingInvoiceId = null; // Add this to track currently viewed invoice
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Invoices script loaded');
@@ -134,7 +135,7 @@ function renderInvoicesTable(page = 1) {
                     <button class="btn btn-outline-primary" onclick="viewInvoice('${invoice.id}')" title="View">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-outline-warning" onclick="openEditModal('${invoice.id}')" title="Edit">
+                    <button class="btn btn-outline-warning" onclick="editInvoice('${invoice.id}')" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn btn-outline-danger" onclick="confirmDelete('${invoice.id}')" title="Delete">
@@ -226,7 +227,7 @@ async function viewInvoice(invoiceId) {
         }
 
         const invoice = doc.data();
-        deleteInvoiceId = invoiceId; // Store for edit functionality
+        currentViewingInvoiceId = invoiceId; // Store for edit functionality
         
         const modal = new bootstrap.Modal(document.getElementById('viewInvoiceModal'));
         
@@ -276,7 +277,7 @@ function generateInvoicePreviewHTML(invoice) {
                 <div class="monthly-billing-info">
                     <strong>Monthly Billing Plan</strong><br>
                     Billing Cycle: ${invoice.billingCycle} Month(s)<br>
-                    ${invoice.nextBillingDate ? `Next Billing: ${new Date(invoice.nextBillingDate).toLocaleDateString('en-IN')}` : ''}
+                    ${invoice.nextBillingDate ? `Next Billing: ${formatInvoiceDateForDisplay({invoiceDate: invoice.nextBillingDate})}` : ''}
                 </div>
             ` : ''}
             
@@ -349,7 +350,7 @@ function generateInvoicePreviewHTML(invoice) {
             ` : ''}
             
             <div class="text-center mt-4">
-                <button class="btn btn-primary" onclick="printInvoiceFromView('${invoice.id}')">
+                <button type="button" class="btn btn-primary" onclick="printInvoiceFromView('${currentViewingInvoiceId}')">
                     <i class="fas fa-print me-2"></i>Print Invoice (A4)
                 </button>
             </div>
@@ -434,8 +435,11 @@ async function printInvoiceFromView(invoiceId) {
     }
 }
 
-async function openEditModal(invoiceId) {
+// Fixed edit function - directly loads invoice for editing
+async function editInvoice(invoiceId) {
     try {
+        console.log('Editing invoice:', invoiceId);
+        
         const doc = await db.collection('invoices').doc(invoiceId).get();
         
         if (!doc.exists) {
@@ -443,16 +447,22 @@ async function openEditModal(invoiceId) {
             return;
         }
 
-        const invoice = doc.data();
-        
+        // Close view modal if open
+        const viewModal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
+        if (viewModal) {
+            viewModal.hide();
+        }
+
         // Load the invoice for editing in the generate tab
-        loadInvoiceForEdit(invoiceId);
+        await loadInvoiceForEdit(invoiceId);
         
     } catch (error) {
         console.error('Error loading invoice for edit:', error);
         showAlert('Error loading invoice: ' + error.message, 'danger');
     }
 }
+
+// Remove the old openEditModal function and replace with editInvoice
 
 function confirmDelete(invoiceId) {
     const invoice = currentInvoices.find(inv => inv.id === invoiceId);
@@ -483,5 +493,18 @@ async function deleteInvoice(invoiceId) {
     } catch (error) {
         console.error('Error deleting invoice:', error);
         showAlert('Error deleting invoice: ' + error.message, 'danger');
+    }
+}
+
+// Add this function to handle edit from view modal
+function editCurrentInvoice() {
+    if (currentViewingInvoiceId) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
+        modal.hide();
+        
+        // Use setTimeout to ensure modal is fully hidden before switching tabs
+        setTimeout(() => {
+            editInvoice(currentViewingInvoiceId);
+        }, 300);
     }
 }
