@@ -707,27 +707,54 @@ function downloadAsPDF() {
 }
 
 function downloadAsJPEG() {
+    // First generate the preview to ensure it's up to date
+    generateInvoicePreview();
+    
     showLoading('Generating JPEG...');
     
+    // Add a small delay to ensure DOM is updated
     setTimeout(() => {
-        generateInvoicePreview();
         const element = document.getElementById('invoicePreview');
         
-        html2canvas(element).then(canvas => {
+        // Ensure the element is visible for capture
+        const originalDisplay = element.style.display;
+        const originalWidth = element.style.width;
+        element.style.display = 'block';
+        element.style.width = '800px';
+        
+        html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        }).then(canvas => {
             const link = document.createElement('a');
             link.download = `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.jpg`;
             link.href = canvas.toDataURL('image/jpeg', 0.9);
             link.click();
+            
+            // Restore original styles
+            element.style.display = originalDisplay;
+            element.style.width = originalWidth;
             hideLoading();
+        }).catch(error => {
+            console.error('JPEG generation error:', error);
+            hideLoading();
+            alert('Error generating JPEG: ' + error.message);
         });
     }, 500);
 }
 
 function printInvoice() {
+    // First generate the preview to ensure it's up to date
     generateInvoicePreview();
+    
+    showLoading('Preparing for printing...');
     
     // Wait for the preview to generate
     setTimeout(() => {
+        const printContent = document.getElementById('invoicePreview').innerHTML;
+        
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -740,6 +767,8 @@ function printInvoice() {
                             margin: 0;
                             padding: 0;
                             font-family: Arial, sans-serif;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
                         }
                         .invoice-template {
                             width: 210mm;
@@ -748,7 +777,7 @@ function printInvoice() {
                             padding: 15mm;
                             box-sizing: border-box;
                         }
-                        .button-group, footer, header {
+                        .button-group, footer, header, .nav-tabs {
                             display: none !important;
                         }
                         @page {
@@ -757,23 +786,29 @@ function printInvoice() {
                         }
                     }
                     body {
-                        visibility: hidden;
+                        margin: 0;
+                        padding: 20px;
+                        font-family: Arial, sans-serif;
+                        background: white;
                     }
                     .invoice-template {
-                        visibility: visible;
-                        position: absolute;
-                        left: 0;
-                        top: 0;
+                        max-width: 800px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        border: 1px solid #ddd;
+                        background: white;
                     }
                 </style>
             </head>
             <body>
-                ${document.getElementById('invoicePreview').innerHTML}
+                ${printContent}
                 <script>
                     window.onload = function() {
                         setTimeout(function() {
                             window.print();
-                            window.close();
+                            setTimeout(function() {
+                                window.close();
+                            }, 500);
                         }, 200);
                     };
                 </script>
@@ -781,7 +816,8 @@ function printInvoice() {
             </html>
         `);
         printWindow.document.close();
-    }, 100);
+        hideLoading();
+    }, 500);
 }
 
 // Helper functions for other files
