@@ -5,6 +5,7 @@ const invoicesPerPage = 10;
 let deleteInvoiceId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Invoices script loaded');
     // Initialize invoices tab
     setupInvoicesTab();
 });
@@ -42,6 +43,7 @@ function setupInvoicesTab() {
 
 async function loadInvoicesForTable() {
     try {
+        console.log('Loading invoices for table...');
         const snapshot = await db.collection('invoices').orderBy('createdAt', 'desc').get();
         currentInvoices = [];
         
@@ -52,6 +54,7 @@ async function loadInvoicesForTable() {
             });
         });
 
+        console.log(`Loaded ${currentInvoices.length} invoices`);
         renderInvoicesTable();
         
     } catch (error) {
