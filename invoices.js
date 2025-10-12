@@ -225,6 +225,9 @@ async function viewInvoice(invoiceId) {
         const invoice = doc.data();
         const modal = new bootstrap.Modal(document.getElementById('viewInvoiceModal'));
         
+        // Store the current invoice ID for editing
+        deleteInvoiceId = invoiceId;
+        
         document.getElementById('viewInvoiceContent').innerHTML = generateInvoicePreviewHTML(invoice);
         modal.show();
         
@@ -360,10 +363,22 @@ function editInvoice(invoiceId) {
 function editCurrentInvoice() {
     const modal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
     modal.hide();
-    editInvoice(deleteInvoiceId);
+    
+    // Use the stored deleteInvoiceId which should contain the current invoice ID
+    if (deleteInvoiceId) {
+        editInvoice(deleteInvoiceId);
+    } else {
+        console.error('No invoice ID found for editing');
+        showAlert('Error: Could not find invoice to edit', 'danger');
+    }
 }
 
 function confirmDelete(invoiceId) {
+    if (!invoiceId) {
+        console.error('confirmDelete called with empty invoice ID');
+        return;
+    }
+
     const invoice = currentInvoices.find(inv => inv.id === invoiceId);
     if (!invoice) return;
 
