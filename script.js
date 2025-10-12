@@ -198,7 +198,17 @@ function collectInvoiceData() {
     const paymentStatus = document.getElementById('paymentStatus').value;
     const billingCycle = document.getElementById('billingCycle').value;
     const nextBillingDate = document.getElementById('nextBillingDate').value;
-    const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+    
+    // Get amount paid based on payment status
+    let amountPaid = 0;
+    if (paymentStatus === 'paid') {
+        // If status is paid, we'll calculate this later based on grand total
+        amountPaid = 0; // Will be updated in save function
+    } else if (paymentStatus === 'partial') {
+        // If status is partial, get the entered amount
+        amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+    }
+    // If unpaid, amountPaid remains 0
     
     // Get all items
     const itemRows = document.querySelectorAll('.item-row');
@@ -276,16 +286,22 @@ async function saveInvoiceToFirebase() {
             return;
         }
         
-        // Check if invoice number already exists (if we're creating new, not editing)
-        // We'll assume if the current invoice number matches the one in the form and we're editing, it's okay
-        const existingDoc = await db.collection('invoices').doc(invoiceData.invoiceNumber).get();
-        const isEditing = existingDoc.exists;
-        
+        // Check if we're editing an existing invoice or creating new
+        const isEditing = currentEditingInvoiceId !== null;
+
         if (isEditing) {
-            // If editing existing invoice, ask for confirmation
-            const response = confirm(`Invoice ${invoiceData.invoiceNumber} already exists. Do you want to update it?`);
-            if (!response) {
-                return;
+            // If editing, we're updating the existing invoice
+            console.log('Editing existing invoice:', currentEditingInvoiceId);
+        } else {
+            // If creating new, check if invoice number already exists
+            const existingDoc = await db.collection('invoices').doc(invoiceData.invoiceNumber).get();
+            if (existingDoc.exists) {
+                const response = confirm(`Invoice number ${invoiceData.invoiceNumber} already exists. Do you want to overwrite it? Click Cancel to generate a new number.`);
+                if (!response) {
+                    // Generate new number and return
+                    generateNewInvoiceNumber();
+                    return;
+                }
             }
         }
         
@@ -294,15 +310,35 @@ async function saveInvoiceToFirebase() {
         setButtonLoading(saveBtn, true);
         showLoading(isEditing ? 'Updating invoice...' : 'Saving invoice...');
         
+        // Ensure amountPaid is properly calculated based on payment status
+        let finalAmountPaid = 0;
+        if (invoiceData.paymentStatus === 'paid') {
+            // If status is paid, amount paid should be equal to grand total
+            finalAmountPaid = invoiceData.grandTotal;
+        } else if (invoiceData.paymentStatus === 'partial') {
+            // If status is partial, use the entered amount or default to 0
+            finalAmountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+        } else {
+            // If status is unpaid, amount paid is 0
+            finalAmountPaid = 0;
+        }
+        
         // Ensure dates are stored properly
         const invoiceToSave = {
             ...invoiceData,
+            amountPaid: finalAmountPaid,
+            balanceDue: invoiceData.grandTotal - finalAmountPaid,
             invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
             createdAt: invoiceData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
-        console.log('Saving invoice:', invoiceToSave);
+        console.log('Saving invoice with payment data:', {
+            paymentStatus: invoiceToSave.paymentStatus,
+            amountPaid: invoiceToSave.amountPaid,
+            grandTotal: invoiceToSave.grandTotal,
+            balanceDue: invoiceToSave.balanceDue
+        });
         
         // Save to Firestore
         await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
@@ -320,7 +356,6 @@ async function saveInvoiceToFirebase() {
             resetForm();
         } else {
             // If editing, just show success message but don't reset the form
-            // This allows user to make further changes if needed
             console.log('Invoice updated successfully, form not reset for further editing');
         }
         
