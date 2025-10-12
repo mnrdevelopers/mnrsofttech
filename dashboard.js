@@ -3,8 +3,6 @@ let paymentChart = null;
 let incomeChart = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Dashboard script loaded');
-    
     // Initialize dashboard when tab is shown
     document.getElementById('dashboard-tab').addEventListener('shown.bs.tab', function() {
         updateDashboard();
@@ -13,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function updateDashboard() {
     try {
-        console.log('Starting dashboard update...');
         const snapshot = await db.collection('invoices').get();
         let totalIncome = 0;
         let pendingAmount = 0;
@@ -40,8 +37,6 @@ async function updateDashboard() {
             monthLabels.push(date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }));
         }
         
-        console.log(`Processing ${snapshot.size} invoices...`);
-        
         snapshot.forEach(doc => {
             const invoice = doc.data();
             
@@ -50,15 +45,17 @@ async function updateDashboard() {
                 customers.add(invoice.customerName);
             }
             
-            // Parse date safely using the utility function
-            const invoiceDate = parseFirebaseDate(invoice.invoiceDate || invoice.createdAt);
-            
-            // Calculate monthly income (current month only)
-            if (invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear) {
-                if (invoice.paymentStatus === 'paid') {
-                    totalIncome += invoice.grandTotal || 0;
-                } else if (invoice.paymentStatus === 'partial') {
+            // Calculate monthly income
+            if (invoice.paymentStatus === 'paid' || invoice.paymentStatus === 'partial') {
+                const invoiceDate = new Date(invoice.invoiceDate || invoice.createdAt);
+                if (invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear) {
                     totalIncome += invoice.amountPaid || 0;
+                }
+                
+                // Calculate income for last 6 months
+                const monthDiff = (currentYear - invoiceDate.getFullYear()) * 12 + (currentMonth - invoiceDate.getMonth());
+                if (monthDiff >= 0 && monthDiff < 6) {
+                    monthlyIncome[5 - monthDiff] += invoice.amountPaid || 0;
                 }
             }
             
@@ -78,27 +75,6 @@ async function updateDashboard() {
             if (invoice.paymentType === 'monthly') {
                 monthlyCustomers++;
             }
-            
-            // Calculate income for last 6 months (FIXED)
-            const monthDiff = (currentYear - invoiceDate.getFullYear()) * 12 + (currentMonth - invoiceDate.getMonth());
-            if (monthDiff >= 0 && monthDiff < 6) {
-                let income = 0;
-                if (invoice.paymentStatus === 'paid') {
-                    income = invoice.grandTotal || 0;
-                } else if (invoice.paymentStatus === 'partial') {
-                    income = invoice.amountPaid || 0;
-                }
-                monthlyIncome[5 - monthDiff] += income;
-            }
-        });
-        
-        console.log('Dashboard calculations completed:', {
-            totalIncome,
-            pendingAmount,
-            totalCustomers: customers.size,
-            monthlyCustomers,
-            paymentCounts,
-            monthlyIncome
         });
         
         // Update dashboard cards
@@ -113,7 +89,6 @@ async function updateDashboard() {
         
     } catch (error) {
         console.error('Error updating dashboard:', error);
-        showAlert('Error updating dashboard: ' + error.message, 'danger');
     }
 }
 
