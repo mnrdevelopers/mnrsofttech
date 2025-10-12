@@ -3,10 +3,8 @@ let currentInvoices = [];
 let currentPage = 1;
 const invoicesPerPage = 10;
 let deleteInvoiceId = null;
-let currentViewingInvoiceId = null; // Add this to track currently viewed invoice
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Invoices script loaded');
     // Initialize invoices tab
     setupInvoicesTab();
 });
@@ -44,7 +42,6 @@ function setupInvoicesTab() {
 
 async function loadInvoicesForTable() {
     try {
-        console.log('Loading invoices for table...');
         const snapshot = await db.collection('invoices').orderBy('createdAt', 'desc').get();
         currentInvoices = [];
         
@@ -55,7 +52,6 @@ async function loadInvoicesForTable() {
             });
         });
 
-        console.log(`Loaded ${currentInvoices.length} invoices`);
         renderInvoicesTable();
         
     } catch (error) {
@@ -227,8 +223,6 @@ async function viewInvoice(invoiceId) {
         }
 
         const invoice = doc.data();
-        currentViewingInvoiceId = invoiceId; // Store for edit functionality
-        
         const modal = new bootstrap.Modal(document.getElementById('viewInvoiceModal'));
         
         document.getElementById('viewInvoiceContent').innerHTML = generateInvoicePreviewHTML(invoice);
@@ -277,7 +271,7 @@ function generateInvoicePreviewHTML(invoice) {
                 <div class="monthly-billing-info">
                     <strong>Monthly Billing Plan</strong><br>
                     Billing Cycle: ${invoice.billingCycle} Month(s)<br>
-                    ${invoice.nextBillingDate ? `Next Billing: ${formatInvoiceDateForDisplay({invoiceDate: invoice.nextBillingDate})}` : ''}
+                    ${invoice.nextBillingDate ? `Next Billing: ${new Date(invoice.nextBillingDate).toLocaleDateString('en-IN')}` : ''}
                 </div>
             ` : ''}
             
@@ -348,121 +342,26 @@ function generateInvoicePreviewHTML(invoice) {
                     <div class="invoice-notes-content">${invoice.notes}</div>
                 </div>
             ` : ''}
-            
-            <div class="text-center mt-4">
-                <button type="button" class="btn btn-primary" onclick="printInvoiceFromView('${currentViewingInvoiceId}')">
-                    <i class="fas fa-print me-2"></i>Print Invoice (A4)
-                </button>
-            </div>
         </div>
     `;
 }
 
-async function printInvoiceFromView(invoiceId) {
-    try {
-        const doc = await db.collection('invoices').doc(invoiceId).get();
-        if (!doc.exists) return;
-
-        const invoice = doc.data();
-        const printWindow = window.open('', '_blank');
-        
-        const printContent = generateInvoicePreviewHTML(invoice);
-        
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>MNR SoftTech Solutions - Invoice ${invoice.invoiceNumber}</title>
-                <style>
-                    @page {
-                        size: A4;
-                        margin: 15mm;
-                    }
-                    body {
-                        width: 210mm;
-                        min-height: 297mm;
-                        margin: 0 auto;
-                        font-family: Arial, sans-serif;
-                        font-size: 12pt;
-                        line-height: 1.4;
-                        background: white;
-                    }
-                    .invoice-template {
-                        width: 100%;
-                        min-height: 277mm;
-                        padding: 0;
-                        border: none;
-                        box-shadow: none;
-                    }
-                    .invoice-header {
-                        margin-bottom: 20mm;
-                    }
-                    .invoice-table {
-                        font-size: 10pt;
-                    }
-                    .invoice-table th,
-                    .invoice-table td {
-                        padding: 6px 4px;
-                    }
-                    .warranty-badge {
-                        font-size: 8pt;
-                        padding: 1px 4px;
-                    }
-                    .btn {
-                        display: none !important;
-                    }
-                </style>
-            </head>
-            <body>
-                ${printContent}
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() {
-                            window.print();
-                            setTimeout(function() {
-                                window.close();
-                            }, 500);
-                        }, 250);
-                    };
-                </script>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-        
-    } catch (error) {
-        console.error('Error printing invoice:', error);
-    }
+function editInvoice(invoiceId) {
+    // Switch to generate tab and load the invoice
+    const generateTab = new bootstrap.Tab(document.getElementById('generate-tab'));
+    generateTab.show();
+    
+    // Load the invoice after a short delay to ensure tab is active
+    setTimeout(() => {
+        loadInvoice(invoiceId);
+    }, 300);
 }
 
-// Fixed edit function - directly loads invoice for editing
-async function editInvoice(invoiceId) {
-    try {
-        console.log('Editing invoice:', invoiceId);
-        
-        const doc = await db.collection('invoices').doc(invoiceId).get();
-        
-        if (!doc.exists) {
-            showAlert('Invoice not found', 'warning');
-            return;
-        }
-
-        // Close view modal if open
-        const viewModal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
-        if (viewModal) {
-            viewModal.hide();
-        }
-
-        // Load the invoice for editing in the generate tab
-        await loadInvoiceForEdit(invoiceId);
-        
-    } catch (error) {
-        console.error('Error loading invoice for edit:', error);
-        showAlert('Error loading invoice: ' + error.message, 'danger');
-    }
+function editCurrentInvoice() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
+    modal.hide();
+    editInvoice(deleteInvoiceId);
 }
-
-// Remove the old openEditModal function and replace with editInvoice
 
 function confirmDelete(invoiceId) {
     const invoice = currentInvoices.find(inv => inv.id === invoiceId);
@@ -496,15 +395,22 @@ async function deleteInvoice(invoiceId) {
     }
 }
 
-// Add this function to handle edit from view modal
-function editCurrentInvoice() {
-    if (currentViewingInvoiceId) {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
-        modal.hide();
-        
-        // Use setTimeout to ensure modal is fully hidden before switching tabs
-        setTimeout(() => {
-            editInvoice(currentViewingInvoiceId);
-        }, 300);
-    }
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add alert to the top of the main content
+    const main = document.querySelector('main');
+    main.insertBefore(alertDiv, main.firstChild);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
