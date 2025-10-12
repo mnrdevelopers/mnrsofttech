@@ -131,7 +131,7 @@ function renderInvoicesTable(page = 1) {
                     <button class="btn btn-outline-primary" onclick="viewInvoice('${invoice.id}')" title="View">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-outline-warning" onclick="editInvoice('${invoice.id}')" title="Edit">
+                    <button class="btn btn-outline-warning" onclick="openEditModal('${invoice.id}')" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn btn-outline-danger" onclick="confirmDelete('${invoice.id}')" title="Delete">
@@ -342,25 +342,111 @@ function generateInvoicePreviewHTML(invoice) {
                     <div class="invoice-notes-content">${invoice.notes}</div>
                 </div>
             ` : ''}
+            
+            <div class="text-center mt-4">
+                <button class="btn btn-primary" onclick="printInvoiceFromView('${invoice.id}')">
+                    <i class="fas fa-print me-2"></i>Print Invoice (A4)
+                </button>
+            </div>
         </div>
     `;
 }
 
-function editInvoice(invoiceId) {
-    // Switch to generate tab and load the invoice
-    const generateTab = new bootstrap.Tab(document.getElementById('generate-tab'));
-    generateTab.show();
-    
-    // Load the invoice after a short delay to ensure tab is active
-    setTimeout(() => {
-        loadInvoice(invoiceId);
-    }, 300);
+async function printInvoiceFromView(invoiceId) {
+    try {
+        const doc = await db.collection('invoices').doc(invoiceId).get();
+        if (!doc.exists) return;
+
+        const invoice = doc.data();
+        const printWindow = window.open('', '_blank');
+        
+        const printContent = generateInvoicePreviewHTML(invoice);
+        
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>MNR SoftTech Solutions - Invoice ${invoice.invoiceNumber}</title>
+                <style>
+                    @page {
+                        size: A4;
+                        margin: 15mm;
+                    }
+                    body {
+                        width: 210mm;
+                        min-height: 297mm;
+                        margin: 0 auto;
+                        font-family: Arial, sans-serif;
+                        font-size: 12pt;
+                        line-height: 1.4;
+                        background: white;
+                    }
+                    .invoice-template {
+                        width: 100%;
+                        min-height: 277mm;
+                        padding: 0;
+                        border: none;
+                        box-shadow: none;
+                    }
+                    .invoice-header {
+                        margin-bottom: 20mm;
+                    }
+                    .invoice-table {
+                        font-size: 10pt;
+                    }
+                    .invoice-table th,
+                    .invoice-table td {
+                        padding: 6px 4px;
+                    }
+                    .warranty-badge {
+                        font-size: 8pt;
+                        padding: 1px 4px;
+                    }
+                    .btn {
+                        display: none !important;
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent}
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                            setTimeout(function() {
+                                window.close();
+                            }, 500);
+                        }, 250);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        
+    } catch (error) {
+        console.error('Error printing invoice:', error);
+    }
 }
 
-function editCurrentInvoice() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
-    modal.hide();
-    editInvoice(deleteInvoiceId);
+async function openEditModal(invoiceId) {
+    try {
+        const doc = await db.collection('invoices').doc(invoiceId).get();
+        
+        if (!doc.exists) {
+            showAlert('Invoice not found', 'warning');
+            return;
+        }
+
+        const invoice = doc.data();
+        
+        // Load the invoice for editing in the generate tab
+        loadInvoiceForEdit(invoiceId);
+        
+    } catch (error) {
+        console.error('Error loading invoice for edit:', error);
+        showAlert('Error loading invoice: ' + error.message, 'danger');
+    }
 }
 
 function confirmDelete(invoiceId) {
@@ -393,24 +479,4 @@ async function deleteInvoice(invoiceId) {
         console.error('Error deleting invoice:', error);
         showAlert('Error deleting invoice: ' + error.message, 'danger');
     }
-}
-
-function showAlert(message, type) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    // Add alert to the top of the main content
-    const main = document.querySelector('main');
-    main.insertBefore(alertDiv, main.firstChild);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
 }
