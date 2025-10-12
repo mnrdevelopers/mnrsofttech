@@ -1180,14 +1180,17 @@ function printInvoice() {
             formattedDate = 'Invalid Date';
         }
         
-        // Payment status text
-        const paymentTexts = {
-            'unpaid': 'Unpaid',
-            'paid': 'Paid',
-            'partial': 'Partial Payment'
+        // Payment status text and color
+        const paymentStatusConfig = {
+            'unpaid': { text: 'Unpaid', color: '#dc3545', bgColor: '#dc3545' },
+            'paid': { text: 'Paid', color: '#28a745', bgColor: '#28a745' },
+            'partial': { text: 'Partial Payment', color: '#ffc107', bgColor: '#ffc107' }
         };
         
-        const paymentText = paymentTexts[paymentStatus] || '';
+        const statusConfig = paymentStatusConfig[paymentStatus] || paymentStatusConfig.unpaid;
+        const paymentText = statusConfig.text;
+        const statusColor = statusConfig.color;
+        const statusBgColor = statusConfig.bgColor;
         
         // Generate clean HTML for printing
         const printHTML = `
@@ -1339,6 +1342,16 @@ function printInvoice() {
             margin-left: 10px;
             font-weight: 500;
         }
+        .warranty-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
+            font-weight: 500;
+        }
         .paid-amount {
             color: #28a745 !important;
             font-weight: bold;
@@ -1350,15 +1363,6 @@ function printInvoice() {
         .total-amount {
             color: #3498db !important;
             font-weight: bold;
-        }
-        .warranty-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            background: #e3f2fd;
-            color: #1976d2;
-            border-radius: 12px;
-            font-size: 11px;
-            margin-left: 8px;
         }
         
         @media print {
@@ -1453,16 +1457,16 @@ function printInvoice() {
                 ${amountPaid > 0 ? `
                     <div class="totals-row">
                         <span>Amount Paid:</span>
-                        <span style="color: #2e7d32;"><strong>₹${amountPaid.toFixed(2)}</strong></span>
+                        <span class="paid-amount">₹${amountPaid.toFixed(2)}</span>
                     </div>
                     <div class="totals-row">
                         <span>Balance Due:</span>
-                        <span style="color: #c62828;"><strong>₹${balanceDue.toFixed(2)}</strong></span>
+                        <span class="balance-due">₹${balanceDue.toFixed(2)}</span>
                     </div>
                 ` : ''}
                 <div class="totals-row grand-total">
                     <span>${amountPaid > 0 ? 'Total Amount' : 'Amount Due'}:</span>
-                    <span style="color: #3498db;">₹${grandTotal.toFixed(2)}</span>
+                    <span class="total-amount">₹${grandTotal.toFixed(2)}</span>
                 </div>
             </div>
         ` : '<p style="text-align: center; padding: 40px; color: #666;">No items added</p>'}
