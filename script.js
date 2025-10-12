@@ -8,6 +8,36 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add item button
     document.getElementById('addItem').addEventListener('click', addNewItemRow);
+
+     // Payment type change handler
+    document.getElementById('paymentType').addEventListener('change', function() {
+        const monthlyFields = document.getElementById('monthlyBillingFields');
+        if (this.value === 'monthly') {
+            monthlyFields.style.display = 'block';
+            // Set next billing date to next month
+            const nextMonth = new Date();
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            document.getElementById('nextBillingDate').value = nextMonth.toISOString().split('T')[0];
+        } else {
+            monthlyFields.style.display = 'none';
+        }
+        generateInvoicePreview();
+    });
+    
+    // Payment status change handler
+    document.getElementById('paymentStatus').addEventListener('change', function() {
+        const partialFields = document.getElementById('partialPaymentFields');
+        if (this.value === 'partial') {
+            partialFields.style.display = 'block';
+        } else {
+            partialFields.style.display = 'none';
+        }
+        generateInvoicePreview();
+    });
+    
+    // Initialize dashboard
+    initializeDashboard();
+});
     
     // Remove item button event delegation
     document.getElementById('itemsContainer').addEventListener('click', function(e) {
@@ -139,6 +169,11 @@ function collectInvoiceData() {
     const customerContact = document.getElementById('customerContact').value;
     const customerAddress = document.getElementById('customerAddress').value;
     const notes = document.getElementById('notes').value;
+    const paymentType = document.getElementById('paymentType').value;
+    const paymentStatus = document.getElementById('paymentStatus').value;
+    const billingCycle = document.getElementById('billingCycle').value;
+    const nextBillingDate = document.getElementById('nextBillingDate').value;
+    const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
     
     // Get all items
     const itemRows = document.querySelectorAll('.item-row');
@@ -165,6 +200,9 @@ function collectInvoiceData() {
         }
     });
     
+    const grandTotal = subtotal;
+    const balanceDue = grandTotal - amountPaid;
+    
     return {
         invoiceNumber,
         invoiceDate,
@@ -174,7 +212,13 @@ function collectInvoiceData() {
         notes,
         items,
         subtotal,
-        grandTotal: subtotal,
+        grandTotal,
+        paymentType,
+        paymentStatus,
+        billingCycle: paymentType === 'monthly' ? parseInt(billingCycle) : null,
+        nextBillingDate: paymentType === 'monthly' ? nextBillingDate : null,
+        amountPaid,
+        balanceDue,
         createdAt: new Date().toISOString()
     };
 }
@@ -198,33 +242,27 @@ async function saveInvoiceToFirebase() {
             return;
         }
         
-        // Ensure dates are stored properly and consistently
+        // Ensure dates are stored properly
         const invoiceToSave = {
             ...invoiceData,
-            // Store invoiceDate as YYYY-MM-DD format for consistency
             invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
-            // Store timestamps as ISO strings
             createdAt: invoiceData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
-        console.log('Saving invoice with date:', invoiceToSave.invoiceDate);
+        console.log('Saving invoice:', invoiceToSave);
         
         // Save to Firestore
         await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
         
         alert('Invoice saved successfully!');
         
+        // Refresh dashboard
+        updateDashboard();
+        
     } catch (error) {
         console.error('Error saving invoice:', error);
-        
-        if (error.code === 'permission-denied') {
-            alert('Permission denied. Please check Firestore security rules.');
-        } else if (error.code === 'unavailable') {
-            alert('Network error. Please check your internet connection.');
-        } else {
-            alert('Error saving invoice: ' + error.message);
-        }
+        alert('Error saving invoice: ' + error.message);
     }
 }
 
@@ -491,9 +529,11 @@ async function deleteInvoice(invoiceId) {
 
 function generateInvoicePreview() {
     const invoiceData = collectInvoiceData();
-    const { invoiceNumber, invoiceDate, customerName, customerContact, customerAddress, notes, items, grandTotal } = invoiceData;
+    const { invoiceNumber, invoiceDate, customerName, customerContact, customerAddress, 
+            notes, items, grandTotal, paymentType, paymentStatus, billingCycle, 
+            nextBillingDate, amountPaid, balanceDue } = invoiceData;
     
-    // Robust date formatting for preview
+    // Format date
     let formattedDate = 'Date not set';
     try {
         if (invoiceDate) {
@@ -511,11 +551,20 @@ function generateInvoicePreview() {
         formattedDate = 'Invalid Date';
     }
     
+    // Payment status badge
+    const paymentBadges = {
+        'unpaid': '<span class="payment-badge payment-unpaid">Unpaid</span>',
+        'paid': '<span class="payment-badge payment-paid">Paid</span>',
+        'partial': '<span class="payment-badge payment-partial">Partial</span>'
+    };
+    
+    const paymentBadge = paymentBadges[paymentStatus] || '';
+    
     // Generate HTML for the invoice
     const invoiceHTML = `
         <div class="invoice-template">
             <div class="invoice-header">
-                <div class="invoice-title">INVOICE</div>
+                <div class="invoice-title">INVOICE ${paymentBadge}</div>
                 <div class="invoice-meta">
                     <div class="invoice-number">Invoice #${invoiceNumber || '---'}</div>
                     <div class="invoice-date">Date: ${formattedDate}</div>
@@ -539,6 +588,14 @@ function generateInvoicePreview() {
                     ${customerAddress || 'Address not provided'}
                 </div>
             </div>
+            
+            ${paymentType === 'monthly' ? `
+                <div class="monthly-billing-info">
+                    <strong>Monthly Billing Plan</strong><br>
+                    Billing Cycle: ${billingCycle} Month(s)<br>
+                    ${nextBillingDate ? `Next Billing: ${new Date(nextBillingDate).toLocaleDateString('en-IN')}` : ''}
+                </div>
+            ` : ''}
             
             ${items.length > 0 ? `
                 <table class="invoice-table">
@@ -569,8 +626,22 @@ function generateInvoicePreview() {
                 </table>
                 
                 <div class="invoice-totals">
+                    <div class="invoice-totals-row">
+                        <span class="invoice-totals-label">Subtotal:</span>
+                        <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
+                    </div>
+                    ${amountPaid > 0 ? `
+                        <div class="invoice-totals-row">
+                            <span class="invoice-totals-label">Amount Paid:</span>
+                            <span class="invoice-totals-value" style="color: #2e7d32;">₹${amountPaid.toFixed(2)}</span>
+                        </div>
+                        <div class="invoice-totals-row">
+                            <span class="invoice-totals-label">Balance Due:</span>
+                            <span class="invoice-totals-value" style="color: #c62828;">₹${balanceDue.toFixed(2)}</span>
+                        </div>
+                    ` : ''}
                     <div class="invoice-totals-row invoice-grand-total">
-                        <span class="invoice-totals-label">Total Amount:</span>
+                        <span class="invoice-totals-label">${amountPaid > 0 ? 'Total Amount' : 'Amount Due'}:</span>
                         <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
                     </div>
                 </div>
@@ -605,6 +676,59 @@ function generateInvoicePreview() {
     const previewContainer = document.getElementById('invoicePreview');
     if (previewContainer) {
         previewContainer.innerHTML = invoiceHTML;
+    }
+}
+
+// Dashboard Functions
+function initializeDashboard() {
+    updateDashboard();
+}
+
+async function updateDashboard() {
+    try {
+        const snapshot = await db.collection('invoices').get();
+        let totalIncome = 0;
+        let pendingAmount = 0;
+        let monthlyCustomers = 0;
+        const customers = new Set();
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        
+        snapshot.forEach(doc => {
+            const invoice = doc.data();
+            
+            // Count unique customers
+            if (invoice.customerName) {
+                customers.add(invoice.customerName);
+            }
+            
+            // Calculate monthly income
+            if (invoice.paymentStatus === 'paid' || invoice.paymentStatus === 'partial') {
+                const invoiceDate = new Date(invoice.invoiceDate || invoice.createdAt);
+                if (invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear) {
+                    totalIncome += invoice.amountPaid || 0;
+                }
+            }
+            
+            // Calculate pending amount
+            if (invoice.paymentStatus === 'unpaid' || invoice.paymentStatus === 'partial') {
+                pendingAmount += invoice.balanceDue || invoice.grandTotal || 0;
+            }
+            
+            // Count monthly billing customers
+            if (invoice.paymentType === 'monthly') {
+                monthlyCustomers++;
+            }
+        });
+        
+        // Update dashboard cards
+        document.getElementById('totalIncome').textContent = `₹${totalIncome.toFixed(2)}`;
+        document.getElementById('pendingAmount').textContent = `₹${pendingAmount.toFixed(2)}`;
+        document.getElementById('totalCustomers').textContent = customers.size;
+        document.getElementById('monthlyCustomers').textContent = monthlyCustomers;
+        
+    } catch (error) {
+        console.error('Error updating dashboard:', error);
     }
 }
 
