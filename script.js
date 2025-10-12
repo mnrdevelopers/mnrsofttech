@@ -688,3 +688,12 @@ function showAlert(message, type) {
         }
     }, 5000);
 }
+
+// Add the missing function
+function editCurrentInvoice() {
+    if (deleteInvoiceId) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
+        modal.hide();
+        loadInvoiceForEdit(deleteInvoiceId);
+    }
+}
