@@ -42,17 +42,34 @@ async function updateDashboard() {
             monthLabels.push(date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }));
         }
         
+        console.log('Processing invoices for dashboard:');
+        
         snapshot.forEach(doc => {
             const invoice = doc.data();
+            
+            console.log('Invoice data:', {
+                id: doc.id,
+                customer: invoice.customerName,
+                status: invoice.paymentStatus,
+                amountPaid: invoice.amountPaid,
+                grandTotal: invoice.grandTotal,
+                items: invoice.items?.length || 0
+            });
             
             // Count unique customers
             if (invoice.customerName) {
                 customers.add(invoice.customerName);
             }
             
-            // Calculate total income (ALL paid amounts, not just current month)
-            if (invoice.paymentStatus === 'paid' || invoice.paymentStatus === 'partial') {
+            // Calculate total income from paid and partial invoices
+            if (invoice.paymentStatus === 'paid') {
+                totalIncome += invoice.grandTotal || 0;
+                paymentCounts.paid++;
+            } else if (invoice.paymentStatus === 'partial') {
                 totalIncome += invoice.amountPaid || 0;
+                paymentCounts.partial++;
+            } else if (invoice.paymentStatus === 'unpaid') {
+                paymentCounts.unpaid++;
             }
             
             // Calculate pending amount
@@ -60,11 +77,6 @@ async function updateDashboard() {
                 pendingAmount += invoice.grandTotal || 0;
             } else if (invoice.paymentStatus === 'partial') {
                 pendingAmount += (invoice.grandTotal || 0) - (invoice.amountPaid || 0);
-            }
-            
-            // Count payment status
-            if (paymentCounts.hasOwnProperty(invoice.paymentStatus)) {
-                paymentCounts[invoice.paymentStatus]++;
             }
             
             // Count monthly billing customers
@@ -93,15 +105,19 @@ async function updateDashboard() {
                 const invoiceYear = invoiceDate.getFullYear();
                 
                 const monthDiff = (currentYear - invoiceYear) * 12 + (currentMonth - invoiceMonth);
-                if (monthDiff >= 0 && monthDiff < 6 && (invoice.paymentStatus === 'paid' || invoice.paymentStatus === 'partial')) {
-                    monthlyIncome[5 - monthDiff] += invoice.amountPaid || 0;
+                if (monthDiff >= 0 && monthDiff < 6) {
+                    if (invoice.paymentStatus === 'paid') {
+                        monthlyIncome[5 - monthDiff] += invoice.grandTotal || 0;
+                    } else if (invoice.paymentStatus === 'partial') {
+                        monthlyIncome[5 - monthDiff] += invoice.amountPaid || 0;
+                    }
                 }
             } catch (error) {
                 console.warn('Error processing date for monthly chart:', error);
             }
         });
         
-        console.log('Dashboard Data:', {
+        console.log('Final Dashboard Calculations:', {
             totalIncome,
             pendingAmount,
             totalCustomers: customers.size,
