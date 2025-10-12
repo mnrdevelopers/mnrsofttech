@@ -1,28 +1,4 @@
-// Global variable to track current editing invoice
-let currentEditingInvoiceId = null;
-
-// Utility function to parse Firebase dates safely
-function parseFirebaseDate(dateValue) {
-    if (!dateValue) return new Date();
-    
-    if (dateValue.toDate && typeof dateValue.toDate === 'function') {
-        // Firebase Timestamp
-        return dateValue.toDate();
-    } else if (typeof dateValue === 'string') {
-        // ISO string
-        return new Date(dateValue);
-    } else if (dateValue instanceof Date) {
-        // Already a Date object
-        return dateValue;
-    } else {
-        // Fallback
-        return new Date();
-    }
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Script loaded successfully');
-    
     // Set current year in footer
     document.getElementById('currentYear').textContent = new Date().getFullYear();
 
@@ -61,32 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize dashboard
     initializeDashboard();
-
-    // Clear form when switching to generate tab
-    document.getElementById('generate-tab').addEventListener('shown.bs.tab', function() {
-        clearForm();
-    });
 });
-
-// Clear form function
-function clearForm() {
-    currentEditingInvoiceId = null;
-    document.getElementById('invoiceForm').reset();
-    
-    // Clear items container except first row
-    const itemsContainer = document.getElementById('itemsContainer');
-    itemsContainer.innerHTML = '';
-    addNewItemRow();
-    
-    // Set today's date
-    document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
-    
-    // Reset display fields
-    document.getElementById('monthlyBillingFields').style.display = 'none';
-    document.getElementById('partialPaymentFields').style.display = 'none';
-    
-    generateInvoicePreview();
-}
 
 // Remove item button event delegation
 document.getElementById('itemsContainer').addEventListener('click', function(e) {
@@ -137,9 +88,7 @@ document.getElementById('downloadPdfBtn').addEventListener('click', downloadAsPD
 document.getElementById('downloadJpgBtn').addEventListener('click', downloadAsJPEG);
 
 // Print button
-document.getElementById('printBtn').addEventListener('click', function() {
-    printInvoice(true); // true for A4 format
-});
+document.getElementById('printBtn').addEventListener('click', printInvoice);
 
 // Auto-generate preview when inputs change
 document.getElementById('invoiceForm').addEventListener('input', function() {
@@ -239,8 +188,7 @@ function collectInvoiceData() {
         nextBillingDate: paymentType === 'monthly' ? nextBillingDate : null,
         amountPaid,
         balanceDue,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: new Date().toISOString()
     };
 }
 
@@ -263,45 +211,22 @@ async function saveInvoiceToFirebase() {
             return;
         }
         
-        // Check if invoice number already exists (for new invoices)
-        if (!currentEditingInvoiceId) {
-            const querySnapshot = await db.collection('invoices')
-                .where('invoiceNumber', '==', invoiceData.invoiceNumber)
-                .get();
-            
-            if (!querySnapshot.empty) {
-                alert('Invoice number already exists. Please use a different invoice number.');
-                return;
-            }
-        }
-
         // Ensure dates are stored properly
         const invoiceToSave = {
             ...invoiceData,
-            invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0]
+            invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
+            createdAt: invoiceData.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
-
+        
         console.log('Saving invoice:', invoiceToSave);
         
-        // Save to Firestore - use auto-generated IDs for better management
-        let docRef;
-        if (currentEditingInvoiceId) {
-            // Update existing invoice
-            docRef = db.collection('invoices').doc(currentEditingInvoiceId);
-            invoiceToSave.updatedAt = new Date().toISOString();
-        } else {
-            // Create new invoice with auto-generated ID
-            docRef = db.collection('invoices').doc();
-            invoiceToSave.createdAt = new Date().toISOString();
-            invoiceToSave.updatedAt = new Date().toISOString();
-        }
+        // Save to Firestore
+        await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
         
-        await docRef.set(invoiceToSave);
+        alert('Invoice saved successfully!');
         
-        alert(currentEditingInvoiceId ? 'Invoice updated successfully!' : 'Invoice saved successfully!');
-        
-        // Clear form and refresh
-        clearForm();
+        // Refresh dashboard
         updateDashboard();
         
     } catch (error) {
@@ -310,17 +235,17 @@ async function saveInvoiceToFirebase() {
     }
 }
 
-async function loadInvoiceForEdit(invoiceId) {
+async function loadInvoice(invoiceId) {
     try {
         const doc = await db.collection('invoices').doc(invoiceId).get();
         
         if (!doc.exists) {
-            showAlert('Invoice not found', 'warning');
+            alert('Invoice not found');
             return;
         }
         
         const invoice = doc.data();
-        currentEditingInvoiceId = invoiceId;
+        console.log('Loading invoice data:', invoice);
         
         // Populate form fields
         document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
@@ -330,9 +255,18 @@ async function loadInvoiceForEdit(invoiceId) {
         if (invoice.invoiceDate) {
             let dateValue = invoice.invoiceDate;
             
-            // Parse Firebase date properly
-            const parsedDate = parseFirebaseDate(dateValue);
-            invoiceDateInput.value = parsedDate.toISOString().split('T')[0];
+            // If it's a full ISO string, extract just the date part
+            if (dateValue.includes('T')) {
+                dateValue = dateValue.split('T')[0];
+            }
+            
+            // If it's a Firebase Timestamp object
+            if (dateValue.toDate) {
+                const jsDate = dateValue.toDate();
+                dateValue = jsDate.toISOString().split('T')[0];
+            }
+            
+            invoiceDateInput.value = dateValue;
         } else {
             invoiceDateInput.value = '';
         }
@@ -344,15 +278,7 @@ async function loadInvoiceForEdit(invoiceId) {
         document.getElementById('paymentType').value = invoice.paymentType || 'one-time';
         document.getElementById('paymentStatus').value = invoice.paymentStatus || 'unpaid';
         document.getElementById('billingCycle').value = invoice.billingCycle || '1';
-        
-        // Handle next billing date
-        if (invoice.nextBillingDate) {
-            const nextBillingDate = parseFirebaseDate(invoice.nextBillingDate);
-            document.getElementById('nextBillingDate').value = nextBillingDate.toISOString().split('T')[0];
-        } else {
-            document.getElementById('nextBillingDate').value = '';
-        }
-        
+        document.getElementById('nextBillingDate').value = invoice.nextBillingDate || '';
         document.getElementById('amountPaid').value = invoice.amountPaid || '';
         
         // Show/hide fields based on payment type
@@ -379,13 +305,9 @@ async function loadInvoiceForEdit(invoiceId) {
         // Generate preview
         generateInvoicePreview();
         
-        // Switch to generate tab
-        const generateTab = new bootstrap.Tab(document.getElementById('generate-tab'));
-        generateTab.show();
-        
     } catch (error) {
         console.error('Error loading invoice:', error);
-        showAlert('Error loading invoice: ' + error.message, 'danger');
+        alert('Error loading invoice: ' + error.message);
     }
 }
 
@@ -572,16 +494,8 @@ function initializeDashboard() {
     updateDashboard();
 }
 
-// Add this function to handle warranty text formatting
 function formatWarrantyText(warranty) {
     if (!warranty) return '';
-    
-    // If it's a custom warranty, return as is
-    if (!['no-warranty', '7-days', '15-days', '1-month', '3-months', '6-months', '1-year'].includes(warranty)) {
-        return warranty;
-    }
-    
-    // Format the standard warranty options
     return warranty.replace(/-/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
 }
 
@@ -612,86 +526,58 @@ function downloadAsJPEG() {
     });
 }
 
-function printInvoice(a4Format = true) {
+function printInvoice() {
     generateInvoicePreview();
     
     // Wait for the preview to generate
     setTimeout(() => {
-        const printContent = document.getElementById('invoicePreview').innerHTML;
         const printWindow = window.open('', '_blank');
-        
-        const printStyles = a4Format ? `
-            <style>
-                @page {
-                    size: A4;
-                    margin: 15mm;
-                }
-                body {
-                    width: 210mm;
-                    min-height: 297mm;
-                    margin: 0 auto;
-                    font-family: Arial, sans-serif;
-                    font-size: 12pt;
-                    line-height: 1.4;
-                }
-                .invoice-template {
-                    width: 100%;
-                    min-height: 277mm;
-                    padding: 0;
-                    border: none;
-                    box-shadow: none;
-                }
-                .invoice-header {
-                    margin-bottom: 20mm;
-                }
-                .invoice-table {
-                    font-size: 10pt;
-                }
-                .invoice-table th,
-                .invoice-table td {
-                    padding: 6px 4px;
-                }
-                .warranty-badge {
-                    font-size: 8pt;
-                    padding: 1px 4px;
-                }
-            </style>
-        ` : '';
-        
         printWindow.document.write(`
             <!DOCTYPE html>
             <html>
             <head>
                 <title>MNR SoftTech Solutions - Invoice</title>
-                ${printStyles}
                 <style>
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        font-family: Arial, sans-serif;
-                        background: white;
+                    @media print {
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            font-family: Arial, sans-serif;
+                        }
+                        .invoice-template {
+                            width: 210mm;
+                            min-height: 297mm;
+                            margin: 0 auto;
+                            padding: 15mm;
+                            box-sizing: border-box;
+                        }
+                        .button-group, footer, header {
+                            display: none !important;
+                        }
+                        @page {
+                            size: A4;
+                            margin: 15mm;
+                        }
                     }
-                    .button-group, footer, header, .nav-tabs, .container > :not(.invoice-template) {
-                        display: none !important;
+                    body {
+                        visibility: hidden;
                     }
                     .invoice-template {
-                        visibility: visible !important;
-                        position: relative !important;
-                        left: 0 !important;
-                        top: 0 !important;
+                        visibility: visible;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
                     }
                 </style>
             </head>
             <body>
-                ${printContent}
+                ${document.getElementById('invoicePreview').innerHTML}
                 <script>
                     window.onload = function() {
                         setTimeout(function() {
                             window.print();
-                            setTimeout(function() {
-                                window.close();
-                            }, 500);
-                        }, 250);
+                            window.close();
+                        }, 200);
                     };
                 </script>
             </body>
@@ -704,40 +590,9 @@ function printInvoice(a4Format = true) {
 // Helper functions for other files
 function formatInvoiceDateForDisplay(invoice) {
     if (invoice.invoiceDate) {
-        const date = parseFirebaseDate(invoice.invoiceDate);
-        return date.toLocaleDateString('en-IN');
+        return new Date(invoice.invoiceDate).toLocaleDateString('en-IN');
     } else if (invoice.createdAt) {
-        const date = parseFirebaseDate(invoice.createdAt);
-        return date.toLocaleDateString('en-IN');
+        return new Date(invoice.createdAt).toLocaleDateString('en-IN');
     }
     return 'N/A';
-}
-
-function showAlert(message, type) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    // Add alert to the top of the main content
-    const main = document.querySelector('main');
-    main.insertBefore(alertDiv, main.firstChild);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
-}
-
-// Add the missing function
-function editCurrentInvoice() {
-    if (deleteInvoiceId) {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'));
-        modal.hide();
-        loadInvoiceForEdit(deleteInvoiceId);
-    }
 }
