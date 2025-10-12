@@ -42,6 +42,17 @@ function setupInvoicesTab() {
 
 async function loadInvoicesForTable() {
     try {
+        // Show loading for table
+        const tbody = document.getElementById('invoicesTableBody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <div class="loading-spinner" style="margin: 0 auto;"></div>
+                    <p class="text-muted mt-2">Loading invoices...</p>
+                </td>
+            </tr>
+        `;
+        
         const snapshot = await db.collection('invoices').orderBy('createdAt', 'desc').get();
         currentInvoices = [];
         
@@ -392,11 +403,17 @@ function confirmDelete(invoiceId) {
 
 async function deleteInvoice(invoiceId) {
     try {
+        // Show loading for delete
+        showLoading('Deleting invoice...');
+        
         await db.collection('invoices').doc(invoiceId).delete();
         
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('deleteInvoiceModal'));
         modal.hide();
+        
+        // Hide loading
+        hideLoading();
         
         showAlert('Invoice deleted successfully!', 'success');
         
@@ -406,6 +423,10 @@ async function deleteInvoice(invoiceId) {
         
     } catch (error) {
         console.error('Error deleting invoice:', error);
+        
+        // Hide loading on error
+        hideLoading();
+        
         showAlert('Error deleting invoice: ' + error.message, 'danger');
     }
 }
