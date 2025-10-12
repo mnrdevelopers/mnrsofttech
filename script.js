@@ -1,7 +1,28 @@
 // Global variable to track current editing invoice
 let currentEditingInvoiceId = null;
 
+// Utility function to parse Firebase dates safely
+function parseFirebaseDate(dateValue) {
+    if (!dateValue) return new Date();
+    
+    if (dateValue.toDate && typeof dateValue.toDate === 'function') {
+        // Firebase Timestamp
+        return dateValue.toDate();
+    } else if (typeof dateValue === 'string') {
+        // ISO string
+        return new Date(dateValue);
+    } else if (dateValue instanceof Date) {
+        // Already a Date object
+        return dateValue;
+    } else {
+        // Fallback
+        return new Date();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Script loaded successfully');
+    
     // Set current year in footer
     document.getElementById('currentYear').textContent = new Date().getFullYear();
 
@@ -244,8 +265,11 @@ async function saveInvoiceToFirebase() {
         
         // Check if invoice number already exists (for new invoices)
         if (!currentEditingInvoiceId) {
-            const existingDoc = await db.collection('invoices').doc(invoiceData.invoiceNumber).get();
-            if (existingDoc.exists) {
+            const querySnapshot = await db.collection('invoices')
+                .where('invoiceNumber', '==', invoiceData.invoiceNumber)
+                .get();
+            
+            if (!querySnapshot.empty) {
                 alert('Invoice number already exists. Please use a different invoice number.');
                 return;
             }
@@ -259,9 +283,20 @@ async function saveInvoiceToFirebase() {
 
         console.log('Saving invoice:', invoiceToSave);
         
-        // Save to Firestore - use currentEditingInvoiceId if editing, otherwise use invoice number as ID
-        const invoiceId = currentEditingInvoiceId || invoiceData.invoiceNumber;
-        await db.collection('invoices').doc(invoiceId).set(invoiceToSave);
+        // Save to Firestore - use auto-generated IDs for better management
+        let docRef;
+        if (currentEditingInvoiceId) {
+            // Update existing invoice
+            docRef = db.collection('invoices').doc(currentEditingInvoiceId);
+            invoiceToSave.updatedAt = new Date().toISOString();
+        } else {
+            // Create new invoice with auto-generated ID
+            docRef = db.collection('invoices').doc();
+            invoiceToSave.createdAt = new Date().toISOString();
+            invoiceToSave.updatedAt = new Date().toISOString();
+        }
+        
+        await docRef.set(invoiceToSave);
         
         alert(currentEditingInvoiceId ? 'Invoice updated successfully!' : 'Invoice saved successfully!');
         
@@ -295,18 +330,9 @@ async function loadInvoiceForEdit(invoiceId) {
         if (invoice.invoiceDate) {
             let dateValue = invoice.invoiceDate;
             
-            // If it's a full ISO string, extract just the date part
-            if (dateValue.includes('T')) {
-                dateValue = dateValue.split('T')[0];
-            }
-            
-            // If it's a Firebase Timestamp object
-            if (dateValue.toDate) {
-                const jsDate = dateValue.toDate();
-                dateValue = jsDate.toISOString().split('T')[0];
-            }
-            
-            invoiceDateInput.value = dateValue;
+            // Parse Firebase date properly
+            const parsedDate = parseFirebaseDate(dateValue);
+            invoiceDateInput.value = parsedDate.toISOString().split('T')[0];
         } else {
             invoiceDateInput.value = '';
         }
@@ -318,7 +344,15 @@ async function loadInvoiceForEdit(invoiceId) {
         document.getElementById('paymentType').value = invoice.paymentType || 'one-time';
         document.getElementById('paymentStatus').value = invoice.paymentStatus || 'unpaid';
         document.getElementById('billingCycle').value = invoice.billingCycle || '1';
-        document.getElementById('nextBillingDate').value = invoice.nextBillingDate || '';
+        
+        // Handle next billing date
+        if (invoice.nextBillingDate) {
+            const nextBillingDate = parseFirebaseDate(invoice.nextBillingDate);
+            document.getElementById('nextBillingDate').value = nextBillingDate.toISOString().split('T')[0];
+        } else {
+            document.getElementById('nextBillingDate').value = '';
+        }
+        
         document.getElementById('amountPaid').value = invoice.amountPaid || '';
         
         // Show/hide fields based on payment type
@@ -662,9 +696,11 @@ function printInvoice(a4Format = true) {
 // Helper functions for other files
 function formatInvoiceDateForDisplay(invoice) {
     if (invoice.invoiceDate) {
-        return new Date(invoice.invoiceDate).toLocaleDateString('en-IN');
+        const date = parseFirebaseDate(invoice.invoiceDate);
+        return date.toLocaleDateString('en-IN');
     } else if (invoice.createdAt) {
-        return new Date(invoice.createdAt).toLocaleDateString('en-IN');
+        const date = parseFirebaseDate(invoice.createdAt);
+        return date.toLocaleDateString('en-IN');
     }
     return 'N/A';
 }
