@@ -1,15 +1,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Set current year in footer
     document.getElementById('currentYear').textContent = new Date().getFullYear();
-    
+
     // Set today's date as default
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('invoiceDate').value = today;
-    
+
     // Add item button
     document.getElementById('addItem').addEventListener('click', addNewItemRow);
 
-     // Payment type change handler
+    // Payment type change handler
     document.getElementById('paymentType').addEventListener('change', function() {
         const monthlyFields = document.getElementById('monthlyBillingFields');
         if (this.value === 'monthly') {
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         generateInvoicePreview();
     });
-    
+
     // Payment status change handler
     document.getElementById('paymentStatus').addEventListener('change', function() {
         const partialFields = document.getElementById('partialPaymentFields');
@@ -34,80 +34,79 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         generateInvoicePreview();
     });
-    
+
     // Initialize dashboard
     initializeDashboard();
 });
-    
-    // Remove item button event delegation
-    document.getElementById('itemsContainer').addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-item') || e.target.closest('.remove-item')) {
-            const itemRow = e.target.closest('.item-row');
-            if (document.querySelectorAll('.item-row').length > 1) {
-                itemRow.remove();
-            } else {
-                // If it's the last row, just clear the values
-                itemRow.querySelectorAll('input').forEach(input => {
-                    if (input.type !== 'number' || input.classList.contains('item-qty')) {
-                        input.value = '';
-                    }
-                });
-                row.querySelector('.item-qty').value = '1';
-                row.querySelector('.item-warranty').value = 'no-warranty';
-                row.querySelector('.custom-warranty-input').style.display = 'none';
-                row.querySelector('.custom-warranty-input').value = '';
-            }
-            generateInvoicePreview();
+
+// Remove item button event delegation
+document.getElementById('itemsContainer').addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-item') || e.target.closest('.remove-item')) {
+        const itemRow = e.target.closest('.item-row');
+        if (document.querySelectorAll('.item-row').length > 1) {
+            itemRow.remove();
+        } else {
+            // If it's the last row, just clear the values
+            itemRow.querySelectorAll('input').forEach(input => {
+                if (input.type !== 'number' || input.classList.contains('item-qty')) {
+                    input.value = '';
+                }
+            });
+            itemRow.querySelector('.item-qty').value = '1';
+            itemRow.querySelector('.item-warranty').value = 'no-warranty';
+            itemRow.querySelector('.custom-warranty-input').style.display = 'none';
+            itemRow.querySelector('.custom-warranty-input').value = '';
         }
-    });
-    
-    // Warranty selection change handler
-    document.getElementById('itemsContainer').addEventListener('change', function(e) {
-        if (e.target.classList.contains('item-warranty')) {
-            const customWarrantyInput = e.target.closest('.item-row').querySelector('.custom-warranty-input');
-            if (e.target.value === 'custom') {
-                customWarrantyInput.style.display = 'block';
-            } else {
-                customWarrantyInput.style.display = 'none';
-                customWarrantyInput.value = '';
-            }
-            generateInvoicePreview();
-        }
-    });
-    
-    // Save invoice button
-    document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoiceToFirebase);
-    
-    // Load invoices button
-    document.getElementById('loadInvoicesBtn').addEventListener('click', loadInvoicesFromFirebase);
-    
-    // Preview button
-    document.getElementById('previewBtn').addEventListener('click', generateInvoicePreview);
-    
-    // Download PDF button
-    document.getElementById('downloadPdfBtn').addEventListener('click', downloadAsPDF);
-    
-    // Download JPEG button
-    document.getElementById('downloadJpgBtn').addEventListener('click', downloadAsJPEG);
-    
-    // Print button
-    document.getElementById('printBtn').addEventListener('click', printInvoice);
-    
-    // Modal functionality
-    setupModal();
-    
-    // Auto-generate preview when inputs change
-    document.getElementById('invoiceForm').addEventListener('input', function() {
-        // Throttle the preview generation to avoid performance issues
-        if (this.previewTimeout) {
-            clearTimeout(this.previewTimeout);
-        }
-        this.previewTimeout = setTimeout(generateInvoicePreview, 500);
-    });
-    
-    // Add initial item row
-    addNewItemRow();
+        generateInvoicePreview();
+    }
 });
+
+// Warranty selection change handler
+document.getElementById('itemsContainer').addEventListener('change', function(e) {
+    if (e.target.classList.contains('item-warranty')) {
+        const customWarrantyInput = e.target.closest('.item-row').querySelector('.custom-warranty-input');
+        if (e.target.value === 'custom') {
+            customWarrantyInput.style.display = 'block';
+        } else {
+            customWarrantyInput.style.display = 'none';
+            customWarrantyInput.value = '';
+        }
+        generateInvoicePreview();
+    }
+});
+
+// Save invoice button
+document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoiceToFirebase);
+
+// Load invoices button
+document.getElementById('loadInvoicesBtn').addEventListener('click', loadInvoicesFromFirebase);
+
+// Preview button
+document.getElementById('previewBtn').addEventListener('click', generateInvoicePreview);
+
+// Download PDF button
+document.getElementById('downloadPdfBtn').addEventListener('click', downloadAsPDF);
+
+// Download JPEG button
+document.getElementById('downloadJpgBtn').addEventListener('click', downloadAsJPEG);
+
+// Print button
+document.getElementById('printBtn').addEventListener('click', printInvoice);
+
+// Modal functionality
+setupModal();
+
+// Auto-generate preview when inputs change
+document.getElementById('invoiceForm').addEventListener('input', function() {
+    // Throttle the preview generation to avoid performance issues
+    if (this.previewTimeout) {
+        clearTimeout(this.previewTimeout);
+    }
+    this.previewTimeout = setTimeout(generateInvoicePreview, 500);
+});
+
+// Add initial item row
+addNewItemRow();
 
 function setupModal() {
     const modal = document.getElementById('invoiceListModal');
