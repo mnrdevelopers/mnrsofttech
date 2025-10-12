@@ -25,16 +25,41 @@ try {
 // Initialize Firestore
 const db = firebase.firestore();
 
+// Firestore settings for better error handling
+db.settings({
+    ignoreUndefinedProperties: true
+});
+
 // Enable offline persistence (optional but recommended)
 db.enablePersistence()
   .catch((err) => {
       console.log("Persistence failed:", err);
   });
 
+// Utility function to parse Firebase dates safely
+function parseFirebaseDate(dateValue) {
+    if (!dateValue) return new Date();
+    
+    if (dateValue.toDate && typeof dateValue.toDate === 'function') {
+        // Firebase Timestamp
+        return dateValue.toDate();
+    } else if (typeof dateValue === 'string') {
+        // ISO string
+        return new Date(dateValue);
+    } else if (dateValue instanceof Date) {
+        // Already a Date object
+        return dateValue;
+    } else {
+        // Fallback
+        return new Date();
+    }
+}
+
 // Test Firestore connection (remove this after testing)
 async function testFirebaseConnection() {
     try {
-        await db.collection('test').doc('connection').set({
+        const testDocRef = db.collection('test').doc('connection');
+        await testDocRef.set({
             test: true,
             timestamp: new Date().toISOString()
         });
