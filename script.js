@@ -1,3 +1,6 @@
+// Global variable to track current editing invoice
+let currentEditingInvoiceId = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Set current year in footer
     document.getElementById('currentYear').textContent = new Date().getFullYear();
@@ -37,7 +40,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize dashboard
     initializeDashboard();
+
+    // Clear form when switching to generate tab
+    document.getElementById('generate-tab').addEventListener('shown.bs.tab', function() {
+        clearForm();
+    });
 });
+
+// Clear form function
+function clearForm() {
+    currentEditingInvoiceId = null;
+    document.getElementById('invoiceForm').reset();
+    
+    // Clear items container except first row
+    const itemsContainer = document.getElementById('itemsContainer');
+    itemsContainer.innerHTML = '';
+    addNewItemRow();
+    
+    // Set today's date
+    document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
+    
+    // Reset display fields
+    document.getElementById('monthlyBillingFields').style.display = 'none';
+    document.getElementById('partialPaymentFields').style.display = 'none';
+    
+    generateInvoicePreview();
+}
 
 // Remove item button event delegation
 document.getElementById('itemsContainer').addEventListener('click', function(e) {
@@ -88,7 +116,9 @@ document.getElementById('downloadPdfBtn').addEventListener('click', downloadAsPD
 document.getElementById('downloadJpgBtn').addEventListener('click', downloadAsJPEG);
 
 // Print button
-document.getElementById('printBtn').addEventListener('click', printInvoice);
+document.getElementById('printBtn').addEventListener('click', function() {
+    printInvoice(true); // true for A4 format
+});
 
 // Auto-generate preview when inputs change
 document.getElementById('invoiceForm').addEventListener('input', function() {
@@ -188,7 +218,8 @@ function collectInvoiceData() {
         nextBillingDate: paymentType === 'monthly' ? nextBillingDate : null,
         amountPaid,
         balanceDue,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     };
 }
 
@@ -211,22 +242,31 @@ async function saveInvoiceToFirebase() {
             return;
         }
         
+        // Check if invoice number already exists (for new invoices)
+        if (!currentEditingInvoiceId) {
+            const existingDoc = await db.collection('invoices').doc(invoiceData.invoiceNumber).get();
+            if (existingDoc.exists) {
+                alert('Invoice number already exists. Please use a different invoice number.');
+                return;
+            }
+        }
+
         // Ensure dates are stored properly
         const invoiceToSave = {
             ...invoiceData,
-            invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
-            createdAt: invoiceData.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0]
         };
-        
+
         console.log('Saving invoice:', invoiceToSave);
         
-        // Save to Firestore
-        await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
+        // Save to Firestore - use currentEditingInvoiceId if editing, otherwise use invoice number as ID
+        const invoiceId = currentEditingInvoiceId || invoiceData.invoiceNumber;
+        await db.collection('invoices').doc(invoiceId).set(invoiceToSave);
         
-        alert('Invoice saved successfully!');
+        alert(currentEditingInvoiceId ? 'Invoice updated successfully!' : 'Invoice saved successfully!');
         
-        // Refresh dashboard
+        // Clear form and refresh
+        clearForm();
         updateDashboard();
         
     } catch (error) {
@@ -235,17 +275,17 @@ async function saveInvoiceToFirebase() {
     }
 }
 
-async function loadInvoice(invoiceId) {
+async function loadInvoiceForEdit(invoiceId) {
     try {
         const doc = await db.collection('invoices').doc(invoiceId).get();
         
         if (!doc.exists) {
-            alert('Invoice not found');
+            showAlert('Invoice not found', 'warning');
             return;
         }
         
         const invoice = doc.data();
-        console.log('Loading invoice data:', invoice);
+        currentEditingInvoiceId = invoiceId;
         
         // Populate form fields
         document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
@@ -305,9 +345,13 @@ async function loadInvoice(invoiceId) {
         // Generate preview
         generateInvoicePreview();
         
+        // Switch to generate tab
+        const generateTab = new bootstrap.Tab(document.getElementById('generate-tab'));
+        generateTab.show();
+        
     } catch (error) {
         console.error('Error loading invoice:', error);
-        alert('Error loading invoice: ' + error.message);
+        showAlert('Error loading invoice: ' + error.message, 'danger');
     }
 }
 
@@ -526,58 +570,86 @@ function downloadAsJPEG() {
     });
 }
 
-function printInvoice() {
+function printInvoice(a4Format = true) {
     generateInvoicePreview();
     
     // Wait for the preview to generate
     setTimeout(() => {
+        const printContent = document.getElementById('invoicePreview').innerHTML;
         const printWindow = window.open('', '_blank');
+        
+        const printStyles = a4Format ? `
+            <style>
+                @page {
+                    size: A4;
+                    margin: 15mm;
+                }
+                body {
+                    width: 210mm;
+                    min-height: 297mm;
+                    margin: 0 auto;
+                    font-family: Arial, sans-serif;
+                    font-size: 12pt;
+                    line-height: 1.4;
+                }
+                .invoice-template {
+                    width: 100%;
+                    min-height: 277mm;
+                    padding: 0;
+                    border: none;
+                    box-shadow: none;
+                }
+                .invoice-header {
+                    margin-bottom: 20mm;
+                }
+                .invoice-table {
+                    font-size: 10pt;
+                }
+                .invoice-table th,
+                .invoice-table td {
+                    padding: 6px 4px;
+                }
+                .warranty-badge {
+                    font-size: 8pt;
+                    padding: 1px 4px;
+                }
+            </style>
+        ` : '';
+        
         printWindow.document.write(`
             <!DOCTYPE html>
             <html>
             <head>
                 <title>MNR SoftTech Solutions - Invoice</title>
+                ${printStyles}
                 <style>
-                    @media print {
-                        body {
-                            margin: 0;
-                            padding: 0;
-                            font-family: Arial, sans-serif;
-                        }
-                        .invoice-template {
-                            width: 210mm;
-                            min-height: 297mm;
-                            margin: 0 auto;
-                            padding: 15mm;
-                            box-sizing: border-box;
-                        }
-                        .button-group, footer, header {
-                            display: none !important;
-                        }
-                        @page {
-                            size: A4;
-                            margin: 15mm;
-                        }
-                    }
                     body {
-                        visibility: hidden;
+                        margin: 0;
+                        padding: 0;
+                        font-family: Arial, sans-serif;
+                        background: white;
+                    }
+                    .button-group, footer, header, .nav-tabs, .container > :not(.invoice-template) {
+                        display: none !important;
                     }
                     .invoice-template {
-                        visibility: visible;
-                        position: absolute;
-                        left: 0;
-                        top: 0;
+                        visibility: visible !important;
+                        position: relative !important;
+                        left: 0 !important;
+                        top: 0 !important;
                     }
                 </style>
             </head>
             <body>
-                ${document.getElementById('invoicePreview').innerHTML}
+                ${printContent}
                 <script>
                     window.onload = function() {
                         setTimeout(function() {
                             window.print();
-                            window.close();
-                        }, 200);
+                            setTimeout(function() {
+                                window.close();
+                            }, 500);
+                        }, 250);
                     };
                 </script>
             </body>
@@ -595,4 +667,24 @@ function formatInvoiceDateForDisplay(invoice) {
         return new Date(invoice.createdAt).toLocaleDateString('en-IN');
     }
     return 'N/A';
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add alert to the top of the main content
+    const main = document.querySelector('main');
+    main.insertBefore(alertDiv, main.firstChild);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
