@@ -78,9 +78,6 @@ document.getElementById('itemsContainer').addEventListener('change', function(e)
 // Save invoice button
 document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoiceToFirebase);
 
-// Load invoices button
-document.getElementById('loadInvoicesBtn').addEventListener('click', loadInvoicesFromFirebase);
-
 // Preview button
 document.getElementById('previewBtn').addEventListener('click', generateInvoicePreview);
 
@@ -92,9 +89,6 @@ document.getElementById('downloadJpgBtn').addEventListener('click', downloadAsJP
 
 // Print button
 document.getElementById('printBtn').addEventListener('click', printInvoice);
-
-// Modal functionality
-setupModal();
 
 // Auto-generate preview when inputs change
 document.getElementById('invoiceForm').addEventListener('input', function() {
@@ -108,39 +102,15 @@ document.getElementById('invoiceForm').addEventListener('input', function() {
 // Add initial item row
 addNewItemRow();
 
-function setupModal() {
-    const modal = document.getElementById('invoiceListModal');
-    const closeBtn = document.querySelector('.close');
-    
-    if (closeBtn) {
-        closeBtn.onclick = function() {
-            modal.style.display = 'none';
-        }
-    }
-    
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-}
-
-function showModal() {
-    const modal = document.getElementById('invoiceListModal');
-    if (modal) {
-        modal.style.display = 'block';
-    }
-}
-
 function addNewItemRow() {
     const itemsContainer = document.getElementById('itemsContainer');
     const newItemRow = document.createElement('div');
     newItemRow.className = 'item-row';
     newItemRow.innerHTML = `
-        <input type="text" class="item-desc" placeholder="Description">
-        <input type="number" class="item-qty" placeholder="Qty" min="1" value="1">
-        <input type="number" class="item-price" placeholder="Price" min="0" step="0.01">
-        <select class="item-warranty">
+        <input type="text" class="form-control item-desc" placeholder="Description" required>
+        <input type="number" class="form-control item-qty" placeholder="Qty" min="1" value="1" required>
+        <input type="number" class="form-control item-price" placeholder="Price" min="0" step="0.01" required>
+        <select class="form-select item-warranty">
             <option value="no-warranty">No Warranty</option>
             <option value="7-days">7 Days</option>
             <option value="15-days">15 Days</option>
@@ -150,8 +120,8 @@ function addNewItemRow() {
             <option value="1-year">1 Year</option>
             <option value="custom">Custom</option>
         </select>
-        <input type="text" class="custom-warranty-input" placeholder="Enter warranty details" style="display: none;">
-        <button type="button" class="remove-item"><i class="fas fa-times"></i></button>
+        <input type="text" class="form-control custom-warranty-input" placeholder="Enter warranty details" style="display: none;">
+        <button type="button" class="btn btn-danger remove-item"><i class="fas fa-times"></i></button>
     `;
     itemsContainer.appendChild(newItemRow);
     
@@ -265,158 +235,6 @@ async function saveInvoiceToFirebase() {
     }
 }
 
-async function loadInvoicesFromFirebase() {
-    try {
-        const snapshot = await db.collection('invoices').orderBy('createdAt', 'desc').get();
-        
-        if (snapshot.empty) {
-            document.getElementById('invoiceList').innerHTML = '<p>No saved invoices found.</p>';
-            showModal();
-            return;
-        }
-        
-        let invoicesHTML = '';
-        snapshot.forEach(doc => {
-            const invoice = doc.data();
-            console.log('Loaded invoice:', invoice); // Debug log
-            
-            // Robust date formatting
-            let displayDate = formatInvoiceDateForDisplay(invoice);
-            
-            // Safe total amount
-            const totalAmount = invoice.grandTotal || invoice.subtotal || 0;
-            
-            invoicesHTML += `
-                <div class="invoice-item" data-id="${doc.id}">
-                    <div class="invoice-item-header">
-                        <strong>${invoice.invoiceNumber || 'No Number'}</strong>
-                        <span class="invoice-date">${displayDate}</span>
-                    </div>
-                    <div class="invoice-item-body">
-                        <div>Customer: ${invoice.customerName || 'No Name'}</div>
-                        <div>Total: ₹${totalAmount.toFixed(2)}</div>
-                        <div>Items: ${invoice.items ? invoice.items.length : 0}</div>
-                    </div>
-                    <div class="invoice-item-actions">
-                        <button class="btn-small btn-load" onclick="loadInvoice('${doc.id}')">
-                            <i class="fas fa-edit"></i> Load
-                        </button>
-                        <button class="btn-small btn-delete" onclick="deleteInvoice('${doc.id}')">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        
-        document.getElementById('invoiceList').innerHTML = invoicesHTML;
-        showModal();
-        
-    } catch (error) {
-        console.error('Error loading invoices:', error);
-        alert('Error loading invoices: ' + error.message);
-    }
-}
-
-// Enhanced date formatting function
-// Enhanced date formatting function for display in the list
-function formatInvoiceDateForDisplay(invoice) {
-    console.log('Formatting date for invoice:', invoice); // Debug log
-    
-    // Priority 1: Use the original invoiceDate for display
-    if (invoice.invoiceDate) {
-        try {
-            let date;
-            
-            // Handle Firebase Timestamp objects
-            if (invoice.invoiceDate.toDate) {
-                date = invoice.invoiceDate.toDate();
-            } 
-            // Handle string dates (YYYY-MM-DD format)
-            else if (typeof invoice.invoiceDate === 'string') {
-                if (invoice.invoiceDate.includes('T')) {
-                    date = new Date(invoice.invoiceDate);
-                } else {
-                    // For YYYY-MM-DD format, add time to avoid timezone issues
-                    date = new Date(invoice.invoiceDate + 'T00:00:00');
-                }
-            }
-            
-            if (date && !isNaN(date.getTime())) {
-                const formatted = date.toLocaleDateString('en-IN', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-                console.log('Successfully formatted invoiceDate:', formatted);
-                return formatted;
-            }
-        } catch (error) {
-            console.warn('invoiceDate formatting failed:', error);
-        }
-    }
-    
-    // Priority 2: Fall back to createdAt timestamp
-    if (invoice.createdAt) {
-        try {
-            let date;
-            
-            if (invoice.createdAt.toDate) {
-                date = invoice.createdAt.toDate();
-            } else if (typeof invoice.createdAt === 'string') {
-                date = new Date(invoice.createdAt);
-            } else if (typeof invoice.createdAt === 'number') {
-                date = new Date(invoice.createdAt);
-            }
-            
-            if (date && !isNaN(date.getTime())) {
-                const formatted = date.toLocaleDateString('en-IN', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-                console.log('Successfully formatted createdAt:', formatted);
-                return formatted;
-            }
-        } catch (error) {
-            console.warn('createdAt formatting failed:', error);
-        }
-    }
-    
-    console.warn('All date formatting attempts failed for invoice:', invoice);
-    return 'Date not available';
-}
-
-// Add this helper function for robust date formatting
-function formatInvoiceDate(invoice) {
-    // Try multiple date sources in order of preference
-    const dateSources = [
-        invoice.createdAt,      // Firebase timestamp
-        invoice.invoiceDate,    // Original invoice date
-        new Date().toISOString() // Current date as fallback
-    ];
-    
-    for (const dateSource of dateSources) {
-        if (!dateSource) continue;
-        
-        try {
-            const date = new Date(dateSource);
-            if (!isNaN(date.getTime())) {
-                return date.toLocaleDateString('en-IN', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            }
-        } catch (error) {
-            console.warn('Date formatting failed for:', dateSource);
-            continue;
-        }
-    }
-    
-    return 'Date not available';
-}
-
 async function loadInvoice(invoiceId) {
     try {
         const doc = await db.collection('invoices').doc(invoiceId).get();
@@ -427,15 +245,14 @@ async function loadInvoice(invoiceId) {
         }
         
         const invoice = doc.data();
-        console.log('Loading invoice data:', invoice); // Debug log
+        console.log('Loading invoice data:', invoice);
         
         // Populate form fields
         document.getElementById('invoiceNumber').value = invoice.invoiceNumber || '';
         
-        // FIX: Properly handle the date field
+        // Handle date field
         const invoiceDateInput = document.getElementById('invoiceDate');
         if (invoice.invoiceDate) {
-            // Handle different date formats from Firebase
             let dateValue = invoice.invoiceDate;
             
             // If it's a full ISO string, extract just the date part
@@ -450,7 +267,6 @@ async function loadInvoice(invoiceId) {
             }
             
             invoiceDateInput.value = dateValue;
-            console.log('Set invoice date to:', dateValue); // Debug log
         } else {
             invoiceDateInput.value = '';
         }
@@ -459,6 +275,17 @@ async function loadInvoice(invoiceId) {
         document.getElementById('customerContact').value = invoice.customerContact || '';
         document.getElementById('customerAddress').value = invoice.customerAddress || '';
         document.getElementById('notes').value = invoice.notes || '';
+        document.getElementById('paymentType').value = invoice.paymentType || 'one-time';
+        document.getElementById('paymentStatus').value = invoice.paymentStatus || 'unpaid';
+        document.getElementById('billingCycle').value = invoice.billingCycle || '1';
+        document.getElementById('nextBillingDate').value = invoice.nextBillingDate || '';
+        document.getElementById('amountPaid').value = invoice.amountPaid || '';
+        
+        // Show/hide fields based on payment type
+        const monthlyFields = document.getElementById('monthlyBillingFields');
+        const partialFields = document.getElementById('partialPaymentFields');
+        monthlyFields.style.display = invoice.paymentType === 'monthly' ? 'block' : 'none';
+        partialFields.style.display = invoice.paymentStatus === 'partial' ? 'block' : 'none';
         
         // Clear existing items
         const itemsContainer = document.getElementById('itemsContainer');
@@ -474,9 +301,6 @@ async function loadInvoice(invoiceId) {
             // Add one empty row if no items
             addNewItemRow();
         }
-        
-        // Close modal
-        document.getElementById('invoiceListModal').style.display = 'none';
         
         // Generate preview
         generateInvoicePreview();
@@ -513,19 +337,6 @@ function populateItemRow(row, item) {
     }
 }
 
-async function deleteInvoice(invoiceId) {
-    if (confirm('Are you sure you want to delete this invoice?')) {
-        try {
-            await db.collection('invoices').doc(invoiceId).delete();
-            alert('Invoice deleted successfully!');
-            loadInvoicesFromFirebase(); // Refresh the list
-        } catch (error) {
-            console.error('Error deleting invoice:', error);
-            alert('Error deleting invoice: ' + error.message);
-        }
-    }
-}
-
 function generateInvoicePreview() {
     const invoiceData = collectInvoiceData();
     const { invoiceNumber, invoiceDate, customerName, customerContact, customerAddress, 
@@ -552,9 +363,9 @@ function generateInvoicePreview() {
     
     // Payment status badge
     const paymentBadges = {
-        'unpaid': '<span class="payment-badge payment-unpaid">Unpaid</span>',
-        'paid': '<span class="payment-badge payment-paid">Paid</span>',
-        'partial': '<span class="payment-badge payment-partial">Partial</span>'
+        'unpaid': '<span class="badge bg-danger">Unpaid</span>',
+        'paid': '<span class="badge bg-success">Paid</span>',
+        'partial': '<span class="badge bg-warning">Partial</span>'
     };
     
     const paymentBadge = paymentBadges[paymentStatus] || '';
@@ -683,54 +494,6 @@ function initializeDashboard() {
     updateDashboard();
 }
 
-async function updateDashboard() {
-    try {
-        const snapshot = await db.collection('invoices').get();
-        let totalIncome = 0;
-        let pendingAmount = 0;
-        let monthlyCustomers = 0;
-        const customers = new Set();
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        
-        snapshot.forEach(doc => {
-            const invoice = doc.data();
-            
-            // Count unique customers
-            if (invoice.customerName) {
-                customers.add(invoice.customerName);
-            }
-            
-            // Calculate monthly income
-            if (invoice.paymentStatus === 'paid' || invoice.paymentStatus === 'partial') {
-                const invoiceDate = new Date(invoice.invoiceDate || invoice.createdAt);
-                if (invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear) {
-                    totalIncome += invoice.amountPaid || 0;
-                }
-            }
-            
-            // Calculate pending amount
-            if (invoice.paymentStatus === 'unpaid' || invoice.paymentStatus === 'partial') {
-                pendingAmount += invoice.balanceDue || invoice.grandTotal || 0;
-            }
-            
-            // Count monthly billing customers
-            if (invoice.paymentType === 'monthly') {
-                monthlyCustomers++;
-            }
-        });
-        
-        // Update dashboard cards
-        document.getElementById('totalIncome').textContent = `₹${totalIncome.toFixed(2)}`;
-        document.getElementById('pendingAmount').textContent = `₹${pendingAmount.toFixed(2)}`;
-        document.getElementById('totalCustomers').textContent = customers.size;
-        document.getElementById('monthlyCustomers').textContent = monthlyCustomers;
-        
-    } catch (error) {
-        console.error('Error updating dashboard:', error);
-    }
-}
-
 function formatWarrantyText(warranty) {
     if (!warranty) return '';
     return warranty.replace(/-/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
@@ -822,4 +585,14 @@ function printInvoice() {
         `);
         printWindow.document.close();
     }, 100);
+}
+
+// Helper functions for other files
+function formatInvoiceDateForDisplay(invoice) {
+    if (invoice.invoiceDate) {
+        return new Date(invoice.invoiceDate).toLocaleDateString('en-IN');
+    } else if (invoice.createdAt) {
+        return new Date(invoice.createdAt).toLocaleDateString('en-IN');
+    }
+    return 'N/A';
 }
