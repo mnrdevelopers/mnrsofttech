@@ -20,6 +20,30 @@
         </div>
     </header>
 
+    <!-- Add this before the form container -->
+<div class="dashboard-cards">
+    <div class="dashboard-card card-income">
+        <h3>This Month's Income</h3>
+        <div class="amount" id="totalIncome">₹0.00</div>
+        <div class="subtext">Paid Amount</div>
+    </div>
+    <div class="dashboard-card card-pending">
+        <h3>Pending Payments</h3>
+        <div class="amount" id="pendingAmount">₹0.00</div>
+        <div class="subtext">Unpaid & Partial</div>
+    </div>
+    <div class="dashboard-card card-customers">
+        <h3>Total Customers</h3>
+        <div class="amount" id="totalCustomers">0</div>
+        <div class="subtext">Unique Customers</div>
+    </div>
+    <div class="dashboard-card card-monthly">
+        <h3>Monthly Billing</h3>
+        <div class="amount" id="monthlyCustomers">0</div>
+        <div class="subtext">Active Subscriptions</div>
+    </div>
+</div>
+
     <main>
         <div class="container">
             <div class="form-container">
