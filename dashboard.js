@@ -23,11 +23,6 @@ async function updateDashboard() {
         let monthlyCustomers = 0;
         const customers = new Set();
         
-        // Get current month and year for filtering
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        
         // Payment status counts
         const paymentCounts = {
             paid: 0,
@@ -40,6 +35,7 @@ async function updateDashboard() {
         const monthLabels = [];
         
         // Generate month labels for last 6 months
+        const now = new Date();
         for (let i = 5; i >= 0; i--) {
             const date = new Date();
             date.setMonth(date.getMonth() - i);
@@ -54,44 +50,9 @@ async function updateDashboard() {
                 customers.add(invoice.customerName);
             }
             
-            // Parse invoice date safely
-            let invoiceDate;
-            try {
-                if (invoice.invoiceDate) {
-                    // Handle different date formats
-                    if (typeof invoice.invoiceDate === 'string') {
-                        invoiceDate = new Date(invoice.invoiceDate);
-                    } else if (invoice.invoiceDate.toDate) {
-                        // Firebase Timestamp
-                        invoiceDate = invoice.invoiceDate.toDate();
-                    } else if (invoice.createdAt) {
-                        // Fallback to createdAt
-                        invoiceDate = new Date(invoice.createdAt);
-                    } else {
-                        invoiceDate = new Date();
-                    }
-                } else if (invoice.createdAt) {
-                    invoiceDate = new Date(invoice.createdAt);
-                } else {
-                    invoiceDate = new Date();
-                }
-            } catch (error) {
-                console.warn('Error parsing date for invoice:', invoice.invoiceNumber, error);
-                invoiceDate = new Date();
-            }
-            
-            // Calculate monthly income (current month)
+            // Calculate total income (ALL paid amounts, not just current month)
             if (invoice.paymentStatus === 'paid' || invoice.paymentStatus === 'partial') {
-                // Check if invoice is from current month and year
-                if (invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear) {
-                    totalIncome += invoice.amountPaid || 0;
-                }
-                
-                // Calculate income for last 6 months
-                const monthDiff = (currentYear - invoiceDate.getFullYear()) * 12 + (currentMonth - invoiceDate.getMonth());
-                if (monthDiff >= 0 && monthDiff < 6) {
-                    monthlyIncome[5 - monthDiff] += invoice.amountPaid || 0;
-                }
+                totalIncome += invoice.amountPaid || 0;
             }
             
             // Calculate pending amount
@@ -110,6 +71,34 @@ async function updateDashboard() {
             if (invoice.paymentType === 'monthly') {
                 monthlyCustomers++;
             }
+            
+            // Calculate monthly income for chart (last 6 months)
+            try {
+                let invoiceDate;
+                if (invoice.invoiceDate) {
+                    if (typeof invoice.invoiceDate === 'string') {
+                        invoiceDate = new Date(invoice.invoiceDate);
+                    } else if (invoice.invoiceDate.toDate) {
+                        invoiceDate = invoice.invoiceDate.toDate();
+                    } else {
+                        invoiceDate = new Date(invoice.createdAt || new Date());
+                    }
+                } else {
+                    invoiceDate = new Date(invoice.createdAt || new Date());
+                }
+                
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+                const invoiceMonth = invoiceDate.getMonth();
+                const invoiceYear = invoiceDate.getFullYear();
+                
+                const monthDiff = (currentYear - invoiceYear) * 12 + (currentMonth - invoiceMonth);
+                if (monthDiff >= 0 && monthDiff < 6 && (invoice.paymentStatus === 'paid' || invoice.paymentStatus === 'partial')) {
+                    monthlyIncome[5 - monthDiff] += invoice.amountPaid || 0;
+                }
+            } catch (error) {
+                console.warn('Error processing date for monthly chart:', error);
+            }
         });
         
         console.log('Dashboard Data:', {
@@ -118,9 +107,7 @@ async function updateDashboard() {
             totalCustomers: customers.size,
             monthlyCustomers,
             paymentCounts,
-            monthlyIncome,
-            currentMonth,
-            currentYear
+            monthlyIncome
         });
         
         // Update dashboard cards
