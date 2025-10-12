@@ -636,3 +636,31 @@ footer p {
     opacity: 0.7;
     pointer-events: none;
 }
+
+/* Print button specific styles */
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    border: none;
+    color: #212529;
+    font-weight: 600;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #e0a800 0%, #c69500 100%);
+    color: #212529;
+    transform: translateY(-1px);
+}
+
+/* Modal footer button spacing */
+.modal-footer .btn {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.modal-footer .btn:first-child {
+    margin-left: 0;
+}
+
+.modal-footer .btn:last-child {
+    margin-right: 0;
+}
