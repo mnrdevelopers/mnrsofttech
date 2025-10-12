@@ -660,30 +660,434 @@ function formatWarrantyText(warranty) {
 }
 
 function downloadAsPDF() {
-    // First generate the preview to ensure it's up to date
+    // First generate the preview to ensure data is up to date
     generateInvoicePreview();
     
     showLoading('Generating PDF...');
     
-    // Add a small delay to ensure DOM is updated
+    // Wait a bit to ensure data is collected
     setTimeout(() => {
-        const element = document.getElementById('invoicePreview');
+        const invoiceData = collectInvoiceData();
+        const { invoiceNumber, invoiceDate, customerName, customerContact, customerAddress, 
+                notes, items, grandTotal, paymentType, paymentStatus, billingCycle, 
+                nextBillingDate, amountPaid, balanceDue } = invoiceData;
         
-        // Ensure the element is visible and properly styled for PDF
-        const originalDisplay = element.style.display;
-        const originalWidth = element.style.width;
-        element.style.display = 'block';
-        element.style.width = '210mm'; // A4 width
+        // Format date
+        let formattedDate = 'Date not set';
+        try {
+            if (invoiceDate) {
+                const date = new Date(invoiceDate);
+                if (!isNaN(date.getTime())) {
+                    formattedDate = date.toLocaleDateString('en-IN', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                }
+            }
+        } catch (error) {
+            formattedDate = 'Invalid Date';
+        }
+        
+        // Payment status text and color
+        const paymentStyles = {
+            'unpaid': { text: 'Unpaid', color: '#dc3545' },
+            'paid': { text: 'Paid', color: '#28a745' },
+            'partial': { text: 'Partial Payment', color: '#ffc107' }
+        };
+        
+        const paymentStyle = paymentStyles[paymentStatus] || { text: '', color: '#6c757d' };
+        
+        // Create clean HTML for PDF
+        const pdfHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>MNR SoftTech Solutions - Invoice ${invoiceNumber || ''}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.4;
+            color: #333;
+            background: #ffffff;
+            padding: 0;
+            margin: 0;
+        }
+        .invoice-container {
+            max-width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 15mm;
+            background: white;
+        }
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+        }
+        .invoice-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .payment-badge {
+            display: inline-block;
+            padding: 6px 15px;
+            background: ${paymentStyle.color};
+            color: white;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-left: 12px;
+            font-weight: bold;
+        }
+        .invoice-meta {
+            text-align: right;
+        }
+        .invoice-number {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        .invoice-date {
+            color: #666;
+            font-size: 16px;
+        }
+        .company-section {
+            margin-bottom: 25px;
+        }
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        .company-details {
+            color: #666;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .customer-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-left: 5px solid #3498db;
+            border-radius: 5px;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        .customer-details {
+            color: #333;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        .monthly-billing {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+        }
+        .monthly-billing strong {
+            color: #856404;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .items-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            border: 1px solid #1a252f;
+            font-weight: bold;
+        }
+        .items-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .warranty-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 15px;
+            font-size: 11px;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+        .totals-section {
+            margin-left: auto;
+            width: 300px;
+            border-top: 2px solid #3498db;
+            padding-top: 20px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        .grand-total {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #dee2e6;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .grand-total .amount {
+            color: #3498db;
+            font-size: 20px;
+        }
+        .paid-amount {
+            color: #28a745 !important;
+        }
+        .balance-due {
+            color: #dc3545 !important;
+        }
+        .warranty-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-left: 5px solid #3498db;
+            border-radius: 5px;
+        }
+        .warranty-section h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        .warranty-section ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        .warranty-section li {
+            margin-bottom: 8px;
+        }
+        .notes-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+        .notes-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        .notes-content {
+            color: #666;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 15px;
+            padding-top: 25px;
+            border-top: 2px solid #dee2e6;
+        }
+        .no-items {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+            font-size: 16px;
+            font-style: italic;
+        }
+        
+        /* Ensure proper printing */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .invoice-container {
+                width: 100%;
+                margin: 0;
+                padding: 15mm;
+                box-shadow: none;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header Section -->
+        <div class="invoice-header">
+            <div class="invoice-title">
+                INVOICE
+                <span class="payment-badge">${paymentStyle.text}</span>
+            </div>
+            <div class="invoice-meta">
+                <div class="invoice-number">Invoice #${invoiceNumber || '---'}</div>
+                <div class="invoice-date">Date: ${formattedDate}</div>
+            </div>
+        </div>
+        
+        <!-- Company Information -->
+        <div class="company-section">
+            <div class="company-name">MNR SoftTech Solutions</div>
+            <div class="company-details">
+                Computer Software & Hardware Services<br>
+                Email: mnrdeveloper11@gmail.com<br>
+                Phone: +91 7416006394 (WhatsApp only)
+            </div>
+        </div>
+        
+        <!-- Customer Information -->
+        <div class="customer-section">
+            <div class="section-title">BILL TO:</div>
+            <div class="customer-details">
+                <strong>${customerName || 'Customer Name'}</strong><br>
+                ${customerContact ? '<strong>Phone:</strong> ' + customerContact + '<br>' : ''}
+                ${customerAddress ? '<strong>Address:</strong> ' + customerAddress : 'Address not provided'}
+            </div>
+        </div>
+        
+        <!-- Monthly Billing Info -->
+        ${paymentType === 'monthly' ? `
+            <div class="monthly-billing">
+                <strong>Monthly Billing Plan</strong><br>
+                <strong>Billing Cycle:</strong> ${billingCycle} Month(s)<br>
+                ${nextBillingDate ? `<strong>Next Billing Date:</strong> ${new Date(nextBillingDate).toLocaleDateString('en-IN')}` : ''}
+            </div>
+        ` : ''}
+        
+        <!-- Items Table -->
+        ${items.length > 0 ? `
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">Description</th>
+                        <th style="width: 15%;" class="text-center">Quantity</th>
+                        <th style="width: 20%;" class="text-right">Unit Price (₹)</th>
+                        <th style="width: 15%;" class="text-right">Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map(item => `
+                        <tr>
+                            <td>
+                                ${item.description}
+                                ${item.warranty && item.warranty !== 'no-warranty' ? 
+                                    `<span class="warranty-tag">Warranty: ${formatWarrantyText(item.warranty)}</span>` : ''}
+                            </td>
+                            <td class="text-center">${item.quantity}</td>
+                            <td class="text-right">${item.price.toFixed(2)}</td>
+                            <td class="text-right"><strong>${item.total.toFixed(2)}</strong></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            
+            <!-- Totals Section -->
+            <div class="totals-section">
+                <div class="total-row">
+                    <span><strong>Subtotal:</strong></span>
+                    <span><strong>₹${grandTotal.toFixed(2)}</strong></span>
+                </div>
+                ${amountPaid > 0 ? `
+                    <div class="total-row">
+                        <span>Amount Paid:</span>
+                        <span class="paid-amount"><strong>₹${amountPaid.toFixed(2)}</strong></span>
+                    </div>
+                    <div class="total-row">
+                        <span>Balance Due:</span>
+                        <span class="balance-due"><strong>₹${balanceDue.toFixed(2)}</strong></span>
+                    </div>
+                ` : ''}
+                <div class="total-row grand-total">
+                    <span>${amountPaid > 0 ? 'Total Amount' : 'Amount Due'}:</span>
+                    <span class="amount">₹${grandTotal.toFixed(2)}</span>
+                </div>
+            </div>
+        ` : `
+            <div class="no-items">
+                <p>No items added to this invoice</p>
+            </div>
+        `}
+        
+        <!-- Warranty Section -->
+        <div class="warranty-section">
+            <h3>Warranty Terms & Conditions</h3>
+            <p>All products and services come with the following warranty terms:</p>
+            <ul>
+                <li><strong>Coverage:</strong> Manufacturing defects and hardware malfunctions</li>
+                <li><strong>Duration:</strong> As specified against each item</li>
+                <li><strong>Requirements:</strong> Original invoice must be presented for warranty claims</li>
+            </ul>
+            <p><strong>Not Covered:</strong> Physical damage, liquid damage, unauthorized repairs, software issues unrelated to hardware, and normal wear and tear.</p>
+        </div>
+        
+        <!-- Notes Section -->
+        ${notes ? `
+            <div class="notes-section">
+                <div class="notes-title">Additional Notes:</div>
+                <div class="notes-content">${notes}</div>
+            </div>
+        ` : ''}
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>Thank you for your business!</strong></p>
+            <p>MNR SoftTech Solutions - Your trusted technology partner</p>
+            <p style="margin-top: 10px; font-size: 13px; color: #999;">
+                For any queries, contact: mnrdeveloper11@gmail.com | +91 7416006394
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+        
+        // Create a temporary container for PDF generation
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.top = '0';
+        tempContainer.style.width = '210mm';
+        tempContainer.innerHTML = pdfHTML;
+        document.body.appendChild(tempContainer);
         
         const opt = {
             margin: 10,
-            filename: `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
+            filename: `MNR_Invoice_${invoiceNumber || 'new'}.pdf`,
+            image: { 
+                type: 'jpeg', 
+                quality: 0.98 
+            },
             html2canvas: { 
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                width: 800,
+                windowWidth: 800
             },
             jsPDF: { 
                 unit: 'mm', 
@@ -692,17 +1096,18 @@ function downloadAsPDF() {
             }
         };
         
-        // Generate PDF
-        html2pdf().set(opt).from(element).save().then(() => {
-            // Restore original styles
-            element.style.display = originalDisplay;
-            element.style.width = originalWidth;
+        // Generate PDF from the clean HTML
+        html2pdf().set(opt).from(tempContainer).save().then(() => {
+            // Clean up
+            document.body.removeChild(tempContainer);
             hideLoading();
         }).catch(error => {
             console.error('PDF generation error:', error);
+            document.body.removeChild(tempContainer);
             hideLoading();
             alert('Error generating PDF: ' + error.message);
         });
+        
     }, 500);
 }
 
