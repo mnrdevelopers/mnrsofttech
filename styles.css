@@ -596,3 +596,118 @@ footer p {
 .btn-delete:hover {
     background-color: #c0392b;
 }
+
+/* Payment Status Badges */
+.payment-badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.payment-unpaid {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.payment-paid {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+}
+
+.payment-partial {
+    background-color: #fff3e0;
+    color: #ef6c00;
+}
+
+/* Monthly billing info */
+.monthly-billing-info {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+}
+
+/* Dashboard Styles */
+.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.dashboard-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.dashboard-card h3 {
+    color: var(--secondary-color);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.dashboard-card .amount {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin: 0.5rem 0;
+}
+
+.dashboard-card .subtext {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.card-income {
+    border-top: 4px solid #2ecc71;
+}
+
+.card-pending {
+    border-top: 4px solid #f39c12;
+}
+
+.card-customers {
+    border-top: 4px solid #3498db;
+}
+
+.card-monthly {
+    border-top: 4px solid #9b59b6;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #ddd;
+}
+
+.tab {
+    padding: 0.8rem 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    font-weight: 600;
+    color: #666;
+}
+
+.tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
