@@ -1332,11 +1332,24 @@ function printInvoice() {
         .payment-badge {
             display: inline-block;
             padding: 4px 12px;
-            background: #dc3545;
+            background: ${statusBgColor};
             color: white;
             border-radius: 4px;
             font-size: 12px;
             margin-left: 10px;
+            font-weight: 500;
+        }
+        .paid-amount {
+            color: #28a745 !important;
+            font-weight: bold;
+        }
+        .balance-due {
+            color: #dc3545 !important;
+            font-weight: bold;
+        }
+        .total-amount {
+            color: #3498db !important;
+            font-weight: bold;
         }
         .warranty-badge {
             display: inline-block;
