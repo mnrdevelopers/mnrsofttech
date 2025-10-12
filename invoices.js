@@ -223,6 +223,8 @@ async function viewInvoice(invoiceId) {
         }
 
         const invoice = doc.data();
+        deleteInvoiceId = invoiceId; // Store for edit functionality
+        
         const modal = new bootstrap.Modal(document.getElementById('viewInvoiceModal'));
         
         document.getElementById('viewInvoiceContent').innerHTML = generateInvoicePreviewHTML(invoice);
