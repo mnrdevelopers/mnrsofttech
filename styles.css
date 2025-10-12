@@ -664,3 +664,58 @@ footer p {
 .modal-footer .btn:last-child {
     margin-right: 0;
 }
+
+/* Consolidation Styles */
+.consolidation-summary-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.consolidation-summary-card h5 {
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-box {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+/* Invoice selection table */
+#dailyInvoicesTable {
+    font-size: 0.9rem;
+}
+
+#dailyInvoicesTable th:first-child,
+#dailyInvoicesTable td:first-child {
+    width: 40px;
+    text-align: center;
+}
+
+.invoice-checkbox {
+    transform: scale(1.2);
+}
