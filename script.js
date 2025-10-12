@@ -572,8 +572,16 @@ function initializeDashboard() {
     updateDashboard();
 }
 
+// Add this function to handle warranty text formatting
 function formatWarrantyText(warranty) {
     if (!warranty) return '';
+    
+    // If it's a custom warranty, return as is
+    if (!['no-warranty', '7-days', '15-days', '1-month', '3-months', '6-months', '1-year'].includes(warranty)) {
+        return warranty;
+    }
+    
+    // Format the standard warranty options
     return warranty.replace(/-/g, ' ').replace(/(^|\s)\S/g, l => l.toUpperCase());
 }
 
