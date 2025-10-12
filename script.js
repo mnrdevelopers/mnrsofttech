@@ -100,47 +100,6 @@ function generateNewInvoiceNumber() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Set current year in footer
-    document.getElementById('currentYear').textContent = new Date().getFullYear();
-
-    // Set today's date as default
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('invoiceDate').value = today;
-
-    // Add item button
-    document.getElementById('addItem').addEventListener('click', addNewItemRow);
-
-    // Payment type change handler
-    document.getElementById('paymentType').addEventListener('change', function() {
-        const monthlyFields = document.getElementById('monthlyBillingFields');
-        if (this.value === 'monthly') {
-            monthlyFields.style.display = 'block';
-            // Set next billing date to next month
-            const nextMonth = new Date();
-            nextMonth.setMonth(nextMonth.getMonth() + 1);
-            document.getElementById('nextBillingDate').value = nextMonth.toISOString().split('T')[0];
-        } else {
-            monthlyFields.style.display = 'none';
-        }
-        generateInvoicePreview();
-    });
-
-    // Payment status change handler
-    document.getElementById('paymentStatus').addEventListener('change', function() {
-        const partialFields = document.getElementById('partialPaymentFields');
-        if (this.value === 'partial') {
-            partialFields.style.display = 'block';
-        } else {
-            partialFields.style.display = 'none';
-        }
-        generateInvoicePreview();
-    });
-
-    // Initialize dashboard
-    initializeDashboard();
-});
-
 // Remove item button event delegation
 document.getElementById('itemsContainer').addEventListener('click', function(e) {
     if (e.target.classList.contains('remove-item') || e.target.closest('.remove-item')) {
@@ -176,6 +135,9 @@ document.getElementById('itemsContainer').addEventListener('change', function(e)
         generateInvoicePreview();
     }
 });
+
+// New Invoice button
+document.getElementById('newInvoiceBtn').addEventListener('click', createNewInvoice);
 
 // Save invoice button
 document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoiceToFirebase);
