@@ -1,3 +1,105 @@
+async function generateInvoiceNumber() {
+    try {
+        // Get current year and month for prefix
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const prefix = `INV-${year}${month}-`;
+        
+        // Query invoices from current month to find the highest number
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        
+        const snapshot = await db.collection('invoices')
+            .where('createdAt', '>=', startOfMonth.toISOString())
+            .where('createdAt', '<=', endOfMonth.toISOString())
+            .get();
+        
+        let highestNumber = 0;
+        
+        snapshot.forEach(doc => {
+            const invoice = doc.data();
+            if (invoice.invoiceNumber && invoice.invoiceNumber.startsWith(prefix)) {
+                const numberPart = invoice.invoiceNumber.replace(prefix, '');
+                const number = parseInt(numberPart);
+                if (!isNaN(number) && number > highestNumber) {
+                    highestNumber = number;
+                }
+            }
+        });
+        
+        // Generate next number
+        const nextNumber = highestNumber + 1;
+        return `${prefix}${String(nextNumber).padStart(3, '0')}`;
+        
+    } catch (error) {
+        console.error('Error generating invoice number:', error);
+        // Fallback: timestamp-based number
+        return `INV-${Date.now()}`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Set current year in footer
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invoiceDate').value = today;
+
+    // Generate automatic invoice number
+    generateInvoiceNumber().then(invoiceNumber => {
+        document.getElementById('invoiceNumber').value = invoiceNumber;
+        // Generate preview with the auto-generated number
+        generateInvoicePreview();
+    });
+
+    // Add item button
+    document.getElementById('addItem').addEventListener('click', addNewItemRow);
+
+    // Payment type change handler
+    document.getElementById('paymentType').addEventListener('change', function() {
+        const monthlyFields = document.getElementById('monthlyBillingFields');
+        if (this.value === 'monthly') {
+            monthlyFields.style.display = 'block';
+            // Set next billing date to next month
+            const nextMonth = new Date();
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            document.getElementById('nextBillingDate').value = nextMonth.toISOString().split('T')[0];
+        } else {
+            monthlyFields.style.display = 'none';
+        }
+        generateInvoicePreview();
+    });
+
+    // Payment status change handler
+    document.getElementById('paymentStatus').addEventListener('change', function() {
+        const partialFields = document.getElementById('partialPaymentFields');
+        if (this.value === 'partial') {
+            partialFields.style.display = 'block';
+        } else {
+            partialFields.style.display = 'none';
+        }
+        generateInvoicePreview();
+    });
+
+    // Initialize dashboard
+    initializeDashboard();
+});
+
+function generateNewInvoiceNumber() {
+    showLoading('Generating invoice number...');
+    generateInvoiceNumber().then(invoiceNumber => {
+        document.getElementById('invoiceNumber').value = invoiceNumber;
+        generateInvoicePreview();
+        hideLoading();
+    }).catch(error => {
+        console.error('Error generating invoice number:', error);
+        hideLoading();
+        alert('Error generating invoice number: ' + error.message);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Set current year in footer
     document.getElementById('currentYear').textContent = new Date().getFullYear();
@@ -213,6 +315,17 @@ async function saveInvoiceToFirebase() {
             return;
         }
         
+        // Check if invoice number already exists (if we're creating new, not editing)
+        const existingDoc = await db.collection('invoices').doc(invoiceData.invoiceNumber).get();
+        if (existingDoc.exists) {
+            const response = confirm(`Invoice number ${invoiceData.invoiceNumber} already exists. Do you want to overwrite it? Click Cancel to generate a new number.`);
+            if (!response) {
+                // Generate new number and return
+                generateNewInvoiceNumber();
+                return;
+            }
+        }
+        
         // Show loading state
         setFormLoading(true);
         setButtonLoading(saveBtn, true);
@@ -251,6 +364,35 @@ async function saveInvoiceToFirebase() {
         
         alert('Error saving invoice: ' + error.message);
     }
+}
+
+function createNewInvoice() {
+    // Clear form
+    document.getElementById('invoiceForm').reset();
+    
+    // Set today's date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invoiceDate').value = today;
+    
+    // Clear items container and add one empty row
+    const itemsContainer = document.getElementById('itemsContainer');
+    itemsContainer.innerHTML = '';
+    addNewItemRow();
+    
+    // Hide monthly billing fields
+    document.getElementById('monthlyBillingFields').style.display = 'none';
+    document.getElementById('partialPaymentFields').style.display = 'none';
+    
+    // Generate new invoice number
+    generateNewInvoiceNumber();
+    
+    // Clear preview
+    document.getElementById('invoicePreview').innerHTML = `
+        <div class="preview-placeholder">
+            <i class="fas fa-receipt"></i>
+            <p>Your invoice will appear here</p>
+        </div>
+    `;
 }
 
 async function loadInvoice(invoiceId) {
