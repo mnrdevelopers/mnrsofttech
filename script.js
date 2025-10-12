@@ -528,29 +528,29 @@ function generateInvoicePreview() {
     
     const paymentBadge = paymentBadges[paymentStatus] || '';
     
-    // Generate HTML for the invoice
+    // Generate HTML for the invoice with better PDF styling
     const invoiceHTML = `
-        <div class="invoice-template">
-            <div class="invoice-header">
-                <div class="invoice-title">INVOICE ${paymentBadge}</div>
-                <div class="invoice-meta">
-                    <div class="invoice-number">Invoice #${invoiceNumber || '---'}</div>
-                    <div class="invoice-date">Date: ${formattedDate}</div>
+        <div class="invoice-template" style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; background: white; box-sizing: border-box;">
+            <div class="invoice-header" style="display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #3498db; padding-bottom: 15px;">
+                <div class="invoice-title" style="font-size: 28px; color: #2c3e50; font-weight: bold;">INVOICE ${paymentBadge}</div>
+                <div class="invoice-meta" style="text-align: right;">
+                    <div class="invoice-number" style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">Invoice #${invoiceNumber || '---'}</div>
+                    <div class="invoice-date" style="color: #666; font-size: 14px;">Date: ${formattedDate}</div>
                 </div>
             </div>
             
-            <div class="invoice-company">
-                <div class="company-name">MNR SoftTech Solutions</div>
-                <div class="company-details">
+            <div class="invoice-company" style="margin-bottom: 30px;">
+                <div class="company-name" style="font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">MNR SoftTech Solutions</div>
+                <div class="company-details" style="color: #666; line-height: 1.5; font-size: 14px;">
                     Computer Software & Hardware Services<br>
                     Contact: Maniteja (mnrdeveloper11@gmail.com)<br>
                     Phone: +91 7416006394 (Whatsapp only)
                 </div>
             </div>
             
-            <div class="invoice-customer">
-                <div class="customer-title">BILL TO:</div>
-                <div class="customer-details">
+            <div class="invoice-customer" style="margin-bottom: 30px; background-color: #f9f9f9; padding: 15px; border-radius: 4px; border-left: 4px solid #3498db;">
+                <div class="customer-title" style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 16px;">BILL TO:</div>
+                <div class="customer-details" style="color: #333; line-height: 1.5; font-size: 14px;">
                     ${customerName || 'Customer Name'}<br>
                     ${customerContact ? 'Phone: ' + customerContact + '<br>' : ''}
                     ${customerAddress || 'Address not provided'}
@@ -558,84 +558,86 @@ function generateInvoicePreview() {
             </div>
             
             ${paymentType === 'monthly' ? `
-                <div class="monthly-billing-info">
-                    <strong>Monthly Billing Plan</strong><br>
-                    Billing Cycle: ${billingCycle} Month(s)<br>
-                    ${nextBillingDate ? `Next Billing: ${new Date(nextBillingDate).toLocaleDateString('en-IN')}` : ''}
+                <div class="monthly-billing-info" style="margin-bottom: 20px; padding: 12px; background: #fff3cd; border-radius: 4px; border-left: 4px solid #ffc107;">
+                    <strong style="color: #856404;">Monthly Billing Plan</strong><br>
+                    <span style="color: #856404; font-size: 14px;">
+                        Billing Cycle: ${billingCycle} Month(s)<br>
+                        ${nextBillingDate ? `Next Billing: ${new Date(nextBillingDate).toLocaleDateString('en-IN')}` : ''}
+                    </span>
                 </div>
             ` : ''}
             
             ${items.length > 0 ? `
-                <table class="invoice-table">
+                <table class="invoice-table" style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
                     <thead>
                         <tr>
-                            <th>Description</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th class="text-right">Amount</th>
+                            <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd;">Description</th>
+                            <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: center; border: 1px solid #ddd; width: 80px;">Qty</th>
+                            <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: right; border: 1px solid #ddd; width: 100px;">Price</th>
+                            <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: right; border: 1px solid #ddd; width: 120px;">Amount</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${items.map(item => `
                             <tr>
-                                <td>
+                                <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">
                                     ${item.description}
                                     ${item.warranty && item.warranty !== 'no-warranty' ? 
-                                        `<span class="warranty-badge">
+                                        `<span style="display: inline-block; padding: 2px 8px; background-color: #e3f2fd; color: #1976d2; border-radius: 12px; font-size: 11px; margin-left: 8px; font-weight: 500;">
                                             Warranty: ${formatWarrantyText(item.warranty)}
                                         </span>` : ''}
                                 </td>
-                                <td>${item.quantity}</td>
-                                <td>₹${item.price.toFixed(2)}</td>
-                                <td class="text-right">₹${item.total.toFixed(2)}</td>
+                                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center; vertical-align: top;">${item.quantity}</td>
+                                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; vertical-align: top;">₹${item.price.toFixed(2)}</td>
+                                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; vertical-align: top;">₹${item.total.toFixed(2)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
                 
-                <div class="invoice-totals">
-                    <div class="invoice-totals-row">
-                        <span class="invoice-totals-label">Subtotal:</span>
-                        <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
+                <div class="invoice-totals" style="margin-left: auto; width: 300px; border-top: 2px solid #3498db; padding-top: 15px;">
+                    <div class="invoice-totals-row" style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span class="invoice-totals-label" style="font-weight: bold;">Subtotal:</span>
+                        <span class="invoice-totals-value" style="font-weight: bold;">₹${grandTotal.toFixed(2)}</span>
                     </div>
                     ${amountPaid > 0 ? `
-                        <div class="invoice-totals-row">
-                            <span class="invoice-totals-label">Amount Paid:</span>
-                            <span class="invoice-totals-value" style="color: #2e7d32;">₹${amountPaid.toFixed(2)}</span>
+                        <div class="invoice-totals-row" style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span class="invoice-totals-label" style="font-weight: bold;">Amount Paid:</span>
+                            <span class="invoice-totals-value" style="font-weight: bold; color: #2e7d32;">₹${amountPaid.toFixed(2)}</span>
                         </div>
-                        <div class="invoice-totals-row">
-                            <span class="invoice-totals-label">Balance Due:</span>
-                            <span class="invoice-totals-value" style="color: #c62828;">₹${balanceDue.toFixed(2)}</span>
+                        <div class="invoice-totals-row" style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span class="invoice-totals-label" style="font-weight: bold;">Balance Due:</span>
+                            <span class="invoice-totals-value" style="font-weight: bold; color: #c62828;">₹${balanceDue.toFixed(2)}</span>
                         </div>
                     ` : ''}
-                    <div class="invoice-totals-row invoice-grand-total">
-                        <span class="invoice-totals-label">${amountPaid > 0 ? 'Total Amount' : 'Amount Due'}:</span>
-                        <span class="invoice-totals-value">₹${grandTotal.toFixed(2)}</span>
+                    <div class="invoice-totals-row invoice-grand-total" style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 8px; border-top: 1px solid #ddd;">
+                        <span class="invoice-totals-label" style="font-size: 16px; font-weight: bold;">${amountPaid > 0 ? 'Total Amount' : 'Amount Due'}:</span>
+                        <span class="invoice-totals-value" style="font-size: 16px; font-weight: bold; color: #3498db;">₹${grandTotal.toFixed(2)}</span>
                     </div>
                 </div>
-            ` : '<p style="text-align: center; padding: 2rem; color: #666;">No items added</p>'}
+            ` : '<p style="text-align: center; padding: 40px; color: #666; font-size: 16px;">No items added</p>'}
             
-            <div class="warranty-disclaimer">
-                <h3>Warranty Terms</h3>
-                <p>Warranty covers manufacturing defects only. Does not cover:</p>
-                <ul>
+            <div class="warranty-disclaimer" style="margin: 25px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #3498db; border-radius: 4px;">
+                <h3 style="margin-top: 0; color: #2c3e50; font-size: 16px;">Warranty Terms</h3>
+                <p style="margin-bottom: 8px; font-size: 14px;">Warranty covers manufacturing defects only. Does not cover:</p>
+                <ul style="margin: 8px 0 8px 20px; font-size: 14px;">
                     <li>Physical damage or liquid damage</li>
                     <li>Unauthorized repairs or modifications</li>
                     <li>Software issues not related to hardware</li>
                 </ul>
-                <p>Original invoice required for all warranty claims.</p>
+                <p style="margin: 0; font-size: 14px;">Original invoice required for all warranty claims.</p>
             </div>
             
             ${notes ? `
-                <div class="invoice-notes">
-                    <div class="invoice-notes-title">Notes:</div>
-                    <div class="invoice-notes-content">${notes}</div>
+                <div class="invoice-notes" style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <div class="invoice-notes-title" style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">Notes:</div>
+                    <div class="invoice-notes-content" style="color: #666; font-size: 14px; line-height: 1.5;">${notes}</div>
                 </div>
             ` : ''}
             
-            <div style="margin-top: 3rem; text-align: center; color: #666; font-size: 0.9rem;">
+            <div style="margin-top: 40px; text-align: center; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #eee;">
                 Thank you for your business!<br>
-                MNR SoftTech Solutions
+                <strong>MNR SoftTech Solutions</strong>
             </div>
         </div>
     `;
@@ -658,22 +660,48 @@ function formatWarrantyText(warranty) {
 }
 
 function downloadAsPDF() {
+    // First generate the preview to ensure it's up to date
+    generateInvoicePreview();
+    
     showLoading('Generating PDF...');
     
+    // Add a small delay to ensure DOM is updated
     setTimeout(() => {
-        generateInvoicePreview();
         const element = document.getElementById('invoicePreview');
+        
+        // Ensure the element is visible and properly styled for PDF
+        const originalDisplay = element.style.display;
+        const originalWidth = element.style.width;
+        element.style.display = 'block';
+        element.style.width = '210mm'; // A4 width
+        
         const opt = {
             margin: 10,
             filename: `MNR_Invoice_${document.getElementById('invoiceNumber').value || 'new'}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait' 
+            }
         };
         
         // Generate PDF
         html2pdf().set(opt).from(element).save().then(() => {
+            // Restore original styles
+            element.style.display = originalDisplay;
+            element.style.width = originalWidth;
             hideLoading();
+        }).catch(error => {
+            console.error('PDF generation error:', error);
+            hideLoading();
+            alert('Error generating PDF: ' + error.message);
         });
     }, 500);
 }
