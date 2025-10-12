@@ -234,53 +234,76 @@ function updateConsolidationSummary() {
     `;
 }
 
-function generateConsolidatedInvoice() {
-    const selectedInvoices = getSelectedInvoices();
+async function generateConsolidatedInvoice() {
+    const selectedInvoices = await getSelectedInvoices();
     
     if (selectedInvoices.length === 0) {
         showAlert('Please select at least one invoice to consolidate', 'warning');
         return;
     }
     
-    previewConsolidatedInvoice();
+    await previewConsolidatedInvoice();
 }
 
-function getSelectedInvoices() {
+async function getSelectedInvoices() {
     const checkboxes = document.querySelectorAll('#dailyInvoicesBody .invoice-checkbox:checked');
     const selectedInvoices = [];
     
-    checkboxes.forEach(checkbox => {
-        const row = checkbox.closest('tr');
+    for (const checkbox of checkboxes) {
         const invoiceId = checkbox.value;
-        const invoiceNumber = row.cells[1].textContent;
-        const date = row.cells[2].textContent;
-        const amount = parseFloat(checkbox.dataset.amount);
         
-        selectedInvoices.push({
-            id: invoiceId,
-            invoiceNumber,
-            date,
-            amount
-        });
-    });
+        try {
+            // Fetch the complete invoice data from Firestore
+            const doc = await db.collection('invoices').doc(invoiceId).get();
+            
+            if (doc.exists) {
+                const invoice = doc.data();
+                const row = checkbox.closest('tr');
+                const invoiceNumber = row.cells[1].textContent;
+                const date = row.cells[2].textContent;
+                const amount = parseFloat(checkbox.dataset.amount);
+                
+                selectedInvoices.push({
+                    id: invoiceId,
+                    invoiceNumber,
+                    date,
+                    amount,
+                    items: invoice.items || [],
+                    customerContact: invoice.customerContact || '',
+                    customerAddress: invoice.customerAddress || '',
+                    notes: invoice.notes || ''
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching invoice details:', error);
+        }
+    }
     
     return selectedInvoices;
 }
 
-function previewConsolidatedInvoice() {
-    const selectedInvoices = getSelectedInvoices();
+async function previewConsolidatedInvoice() {
+    const selectedInvoices = await getSelectedInvoices();
     const customer = document.getElementById('consolidateCustomer').value;
     const month = document.getElementById('consolidateMonth').value;
     const year = document.getElementById('consolidateYear').value;
     
     if (selectedInvoices.length === 0) return;
     
-    // Calculate totals
+    // Calculate totals and collect all services
     const totalAmount = selectedInvoices.reduce((sum, invoice) => sum + invoice.amount, 0);
     const monthName = new Date(2000, month - 1).toLocaleString('en-IN', { month: 'long' });
     
     // Generate consolidated invoice number
     const consolidatedNumber = `CON-${year}${month.toString().padStart(2, '0')}-${customer.substring(0, 3).toUpperCase()}`;
+    
+    // Get customer contact and address from first invoice (assuming they're the same)
+    const firstInvoice = selectedInvoices[0];
+    const customerContact = firstInvoice.customerContact || '';
+    const customerAddress = firstInvoice.customerAddress || '';
+    
+    // Count total services across all invoices
+    const totalServices = selectedInvoices.reduce((sum, invoice) => sum + (invoice.items ? invoice.items.length : 0), 0);
     
     const previewHTML = `
         <div class="invoice-template" style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; background: white; box-sizing: border-box;">
@@ -305,6 +328,8 @@ function previewConsolidatedInvoice() {
                 <div class="customer-title" style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 16px;">BILL TO:</div>
                 <div class="customer-details" style="color: #333; line-height: 1.5; font-size: 14px;">
                     ${customer}<br>
+                    ${customerContact ? 'Phone: ' + customerContact + '<br>' : ''}
+                    ${customerAddress || 'Address not provided'}<br>
                     <strong>Billing Period:</strong> ${monthName} ${year}
                 </div>
             </div>
@@ -312,7 +337,7 @@ function previewConsolidatedInvoice() {
             <div style="margin-bottom: 20px; padding: 12px; background: #fff3cd; border-radius: 4px; border-left: 4px solid #ffc107;">
                 <strong style="color: #856404;">Monthly Service Summary</strong><br>
                 <span style="color: #856404; font-size: 14px;">
-                    This invoice consolidates ${selectedInvoices.length} daily service invoices for ${monthName} ${year}
+                    This invoice consolidates ${selectedInvoices.length} daily invoices with ${totalServices} individual services for ${monthName} ${year}
                 </span>
             </div>
             
@@ -320,22 +345,46 @@ function previewConsolidatedInvoice() {
                 <thead>
                     <tr>
                         <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd;">Date</th>
-                        <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd;">Original Invoice #</th>
+                        <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd;">Invoice #</th>
                         <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd;">Service Description</th>
+                        <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: center; border: 1px solid #ddd; width: 80px;">Qty</th>
+                        <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: right; border: 1px solid #ddd; width: 100px;">Price</th>
                         <th style="background-color: #2c3e50; color: white; padding: 12px; text-align: right; border: 1px solid #ddd; width: 120px;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${selectedInvoices.map(invoice => `
-                        <tr>
-                            <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">${invoice.date}</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">${invoice.invoiceNumber}</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">Daily Computer Services & Support</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; vertical-align: top;">₹${invoice.amount.toFixed(2)}</td>
-                        </tr>
+                        ${invoice.items && invoice.items.length > 0 ? 
+                            invoice.items.map(item => `
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">${invoice.date}</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">${invoice.invoiceNumber}</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">
+                                        ${item.description}
+                                        ${item.warranty && item.warranty !== 'no-warranty' ? 
+                                            `<span style="display: inline-block; padding: 2px 8px; background-color: #e3f2fd; color: #1976d2; border-radius: 12px; font-size: 11px; margin-left: 8px; font-weight: 500;">
+                                                Warranty: ${formatWarrantyText(item.warranty)}
+                                            </span>` : ''}
+                                    </td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center; vertical-align: top;">${item.quantity}</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; vertical-align: top;">₹${item.price.toFixed(2)}</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; vertical-align: top;">₹${item.total.toFixed(2)}</td>
+                                </tr>
+                            `).join('')
+                            : `
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">${invoice.date}</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top;">${invoice.invoiceNumber}</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; vertical-align: top; color: #666;">No service details available</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center; vertical-align: top;">-</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; vertical-align: top;">-</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; vertical-align: top;">₹${invoice.amount.toFixed(2)}</td>
+                                </tr>
+                            `
+                        }
                     `).join('')}
                     <tr style="background-color: #f8f9fa;">
-                        <td colspan="3" style="padding: 12px; text-align: right; font-weight: bold; border-bottom: 1px solid #ddd;">Monthly Total:</td>
+                        <td colspan="5" style="padding: 12px; text-align: right; font-weight: bold; border-bottom: 1px solid #ddd;">Monthly Total (${selectedInvoices.length} invoices, ${totalServices} services):</td>
                         <td style="padding: 12px; text-align: right; font-weight: bold; border-bottom: 1px solid #ddd;">₹${totalAmount.toFixed(2)}</td>
                     </tr>
                 </tbody>
@@ -357,7 +406,7 @@ function previewConsolidatedInvoice() {
             <div class="invoice-notes" style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee;">
                 <div class="invoice-notes-title" style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">Notes:</div>
                 <div class="invoice-notes-content" style="color: #666; font-size: 14px; line-height: 1.5;">
-                    Thank you for your continued business! This consolidated invoice simplifies your monthly billing process.
+                    Thank you for your continued business! This consolidated invoice provides a detailed breakdown of all services provided during ${monthName} ${year}.<br>
                     Individual daily invoices are available upon request.
                 </div>
             </div>
@@ -411,8 +460,8 @@ function downloadConsolidatedPDF() {
     });
 }
 
-function printConsolidatedInvoice() {
-    const selectedInvoices = getSelectedInvoices();
+async function printConsolidatedInvoice() {
+    const selectedInvoices = await getSelectedInvoices();
     const customer = document.getElementById('consolidateCustomer').value;
     const month = document.getElementById('consolidateMonth').value;
     const year = document.getElementById('consolidateYear').value;
@@ -425,6 +474,14 @@ function printConsolidatedInvoice() {
     const totalAmount = selectedInvoices.reduce((sum, invoice) => sum + invoice.amount, 0);
     const monthName = new Date(2000, month - 1).toLocaleString('en-IN', { month: 'long' });
     const consolidatedNumber = `CON-${year}${month.toString().padStart(2, '0')}-${customer.substring(0, 3).toUpperCase()}`;
+    
+    // Get customer contact and address from first invoice
+    const firstInvoice = selectedInvoices[0];
+    const customerContact = firstInvoice.customerContact || '';
+    const customerAddress = firstInvoice.customerAddress || '';
+    
+    // Count total services
+    const totalServices = selectedInvoices.reduce((sum, invoice) => sum + (invoice.items ? invoice.items.length : 0), 0);
     
     const printHTML = `
 <!DOCTYPE html>
@@ -525,6 +582,9 @@ function printConsolidatedInvoice() {
         .text-right {
             text-align: right;
         }
+        .text-center {
+            text-align: center;
+        }
         .invoice-totals {
             margin-left: auto;
             width: 300px;
@@ -570,6 +630,16 @@ function printConsolidatedInvoice() {
             border-radius: 4px;
             font-size: 12px;
             margin-left: 10px;
+            font-weight: 500;
+        }
+        .warranty-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
             font-weight: 500;
         }
         .total-amount {
@@ -622,35 +692,59 @@ function printConsolidatedInvoice() {
             <div class="customer-title">BILL TO:</div>
             <div class="customer-details">
                 ${customer}<br>
+                ${customerContact ? 'Phone: ' + customerContact + '<br>' : ''}
+                ${customerAddress || 'Address not provided'}<br>
                 <strong>Billing Period:</strong> ${monthName} ${year}
             </div>
         </div>
         
         <div style="margin-bottom: 20px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107;">
             <strong>Monthly Service Summary</strong><br>
-            This invoice consolidates ${selectedInvoices.length} daily service invoices for ${monthName} ${year}
+            This invoice consolidates ${selectedInvoices.length} daily invoices with ${totalServices} individual services for ${monthName} ${year}
         </div>
         
         <table class="invoice-table">
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Original Invoice #</th>
+                    <th>Invoice #</th>
                     <th>Service Description</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-right">Price</th>
                     <th class="text-right">Amount</th>
                 </tr>
             </thead>
             <tbody>
                 ${selectedInvoices.map(invoice => `
-                    <tr>
-                        <td>${invoice.date}</td>
-                        <td>${invoice.invoiceNumber}</td>
-                        <td>Daily Computer Services & Support</td>
-                        <td class="text-right">₹${invoice.amount.toFixed(2)}</td>
-                    </tr>
+                    ${invoice.items && invoice.items.length > 0 ? 
+                        invoice.items.map(item => `
+                            <tr>
+                                <td>${invoice.date}</td>
+                                <td>${invoice.invoiceNumber}</td>
+                                <td>
+                                    ${item.description}
+                                    ${item.warranty && item.warranty !== 'no-warranty' ? 
+                                        `<span class="warranty-badge">Warranty: ${formatWarrantyText(item.warranty)}</span>` : ''}
+                                </td>
+                                <td class="text-center">${item.quantity}</td>
+                                <td class="text-right">₹${item.price.toFixed(2)}</td>
+                                <td class="text-right">₹${item.total.toFixed(2)}</td>
+                            </tr>
+                        `).join('')
+                        : `
+                            <tr>
+                                <td>${invoice.date}</td>
+                                <td>${invoice.invoiceNumber}</td>
+                                <td style="color: #666;">No service details available</td>
+                                <td class="text-center">-</td>
+                                <td class="text-right">-</td>
+                                <td class="text-right">₹${invoice.amount.toFixed(2)}</td>
+                            </tr>
+                        `
+                    }
                 `).join('')}
                 <tr style="background-color: #f8f9fa;">
-                    <td colspan="3" style="text-align: right; font-weight: bold; padding: 12px;">Monthly Total:</td>
+                    <td colspan="5" style="text-align: right; font-weight: bold; padding: 12px;">Monthly Total (${selectedInvoices.length} invoices, ${totalServices} services):</td>
                     <td class="text-right" style="font-weight: bold; padding: 12px;">₹${totalAmount.toFixed(2)}</td>
                 </tr>
             </tbody>
@@ -672,7 +766,7 @@ function printConsolidatedInvoice() {
         <div class="notes-section">
             <div style="font-weight: bold; margin-bottom: 8px;">Notes:</div>
             <div style="color: #666;">
-                Thank you for your continued business! This consolidated invoice simplifies your monthly billing process.
+                Thank you for your continued business! This consolidated invoice provides a detailed breakdown of all services provided during ${monthName} ${year}.<br>
                 Individual daily invoices are available upon request.
             </div>
         </div>
