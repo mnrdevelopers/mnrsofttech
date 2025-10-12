@@ -1,36 +1,26 @@
 async function generateInvoiceNumber() {
     try {
-        // Get current year and month for prefix
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const prefix = `INV-${year}${month}-`;
-        
-        // Query invoices from current month to find the highest number
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        
-        const snapshot = await db.collection('invoices')
-            .where('createdAt', '>=', startOfMonth.toISOString())
-            .where('createdAt', '<=', endOfMonth.toISOString())
-            .get();
-        
+        // Get all invoices to find the highest number
+        const snapshot = await db.collection('invoices').get();
         let highestNumber = 0;
         
         snapshot.forEach(doc => {
             const invoice = doc.data();
-            if (invoice.invoiceNumber && invoice.invoiceNumber.startsWith(prefix)) {
-                const numberPart = invoice.invoiceNumber.replace(prefix, '');
-                const number = parseInt(numberPart);
-                if (!isNaN(number) && number > highestNumber) {
-                    highestNumber = number;
+            if (invoice.invoiceNumber) {
+                // Extract numbers from invoice numbers like "INV-0001", "INV-0025", etc.
+                const match = invoice.invoiceNumber.match(/INV-(\d+)/);
+                if (match) {
+                    const number = parseInt(match[1]);
+                    if (!isNaN(number) && number > highestNumber) {
+                        highestNumber = number;
+                    }
                 }
             }
         });
         
         // Generate next number
         const nextNumber = highestNumber + 1;
-        return `${prefix}${String(nextNumber).padStart(3, '0')}`;
+        return `INV-${String(nextNumber).padStart(4, '0')}`;
         
     } catch (error) {
         console.error('Error generating invoice number:', error);
