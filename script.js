@@ -84,11 +84,12 @@ function generateNewInvoiceNumber() {
     generateInvoiceNumber().then(invoiceNumber => {
         document.getElementById('invoiceNumber').value = invoiceNumber;
         generateInvoicePreview();
-        hideLoading();
+        showToast('New invoice number generated', 'success', 2000);
     }).catch(error => {
         console.error('Error generating invoice number:', error);
+        showToast('Error generating invoice number: ' + error.message, 'error');
+    }).finally(() => {
         hideLoading();
-        alert('Error generating invoice number: ' + error.message);
     });
 }
 
@@ -272,17 +273,17 @@ async function saveInvoiceToFirebase() {
         const invoiceData = collectInvoiceData();
         
         if (!invoiceData.invoiceNumber) {
-            alert('Please enter an invoice number');
+            showToast('Please enter an invoice number', 'warning');
             return;
         }
         
         if (!invoiceData.customerName) {
-            alert('Please enter customer name');
+            showToast('Please enter customer name', 'warning');
             return;
         }
         
         if (invoiceData.items.length === 0) {
-            alert('Please add at least one item');
+            showToast('Please add at least one item', 'warning');
             return;
         }
         
@@ -343,13 +344,12 @@ async function saveInvoiceToFirebase() {
         // Save to Firestore
         await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
         
-        // Hide loading
-        hideLoading();
-        setFormLoading(false);
-        setButtonLoading(saveBtn, false);
-        
-        // Show success message
-        showAlert(`Invoice ${isEditing ? 'updated' : 'saved'} successfully!`, 'success');
+        // Show success message with toast
+        showToast(
+            `Invoice ${isEditing ? 'updated' : 'saved'} successfully!`, 
+            'success', 
+            4000
+        );
         
         // Reset form after successful save (only for new invoices, not when editing)
         if (!isEditing) {
@@ -364,13 +364,12 @@ async function saveInvoiceToFirebase() {
         
     } catch (error) {
         console.error('Error saving invoice:', error);
-        
-        // Hide loading on error
+        showToast('Error saving invoice: ' + error.message, 'error');
+    } finally {
+        // Always hide loading regardless of success or error
         hideLoading();
         setFormLoading(false);
         setButtonLoading(saveBtn, false);
-        
-        alert('Error saving invoice: ' + error.message);
     }
 }
 
@@ -1639,6 +1638,11 @@ function resetForm() {
     `;
     
     console.log('Form reset for new invoice');
+    
+    // Show a small notification that form is ready for new invoice
+    setTimeout(() => {
+        showToast('Form cleared and ready for new invoice', 'info', 3000);
+    }, 500);
 }
 
 // Add showAlert function to script.js (if not already there)
