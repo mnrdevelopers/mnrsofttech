@@ -102,7 +102,7 @@ async function loadDailyInvoices() {
     const year = document.getElementById('consolidateYear').value;
     
     if (!customer || !month || !year) {
-        showAlert('Please select customer, month, and year', 'warning');
+        showToast('Please select customer, month, and year', 'warning');
         return;
     }
     
@@ -135,12 +135,12 @@ async function loadDailyInvoices() {
         dailyInvoices.sort((a, b) => a.originalDate - b.originalDate);
         
         displayDailyInvoices(dailyInvoices);
-        hideLoading();
         
     } catch (error) {
         console.error('Error loading daily invoices:', error);
+        showToast('Error loading daily invoices: ' + error.message, 'error');
+    } finally {
         hideLoading();
-        showAlert('Error loading daily invoices: ' + error.message, 'danger');
     }
 }
 
@@ -803,7 +803,7 @@ async function saveConsolidatedInvoice() {
     const year = document.getElementById('consolidateYear').value;
     
     if (selectedInvoices.length === 0) {
-        showAlert('No invoices selected', 'warning');
+        showToast('No invoices selected', 'warning');
         return;
     }
     
@@ -850,15 +850,15 @@ async function saveConsolidatedInvoice() {
         // Save to Firestore
         await db.collection('invoices').doc(consolidatedNumber).set(consolidatedInvoice);
         
-        hideLoading();
-        showAlert('Consolidated invoice saved successfully!', 'success');
+        showToast('Consolidated invoice saved successfully!', 'success');
         
         // Refresh dashboard
         updateDashboard();
         
     } catch (error) {
         console.error('Error saving consolidated invoice:', error);
+        showToast('Error saving consolidated invoice: ' + error.message, 'error');
+    } finally {
         hideLoading();
-        showAlert('Error saving consolidated invoice: ' + error.message, 'danger');
     }
 }
