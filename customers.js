@@ -4,34 +4,65 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeCustomersTab() {
-    // Initialize when tab is shown
-    document.getElementById('customers-tab').addEventListener('shown.bs.tab', function() {
+    // Wait for the customers tab to be shown before setting up event listeners
+    const customersTab = document.getElementById('customers-tab');
+    if (customersTab) {
+        customersTab.addEventListener('shown.bs.tab', function() {
+            setupCustomerEventListeners();
+            loadCustomers();
+        });
+    }
+
+    // Also set up event listeners if the tab is already active
+    if (document.getElementById('customers').classList.contains('active')) {
+        setupCustomerEventListeners();
         loadCustomers();
-    });
-
-    // Add customer button
-    document.getElementById('addCustomerBtn').addEventListener('click', showAddCustomerModal);
-
-    // Save customer button
-    document.getElementById('saveCustomerBtn').addEventListener('click', saveCustomer);
-
-    // Search customers
-    document.getElementById('searchCustomers').addEventListener('input', filterCustomers);
-
-    // Customer type filter
-    document.getElementById('filterCustomerType').addEventListener('change', filterCustomers);
-
-    // Clear customer filters
-    document.getElementById('clearCustomerFilters').addEventListener('click', function() {
-        document.getElementById('searchCustomers').value = '';
-        document.getElementById('filterCustomerType').value = '';
-        filterCustomers();
-    });
-
-    // Edit customer modal setup
-    document.getElementById('saveEditCustomerBtn').addEventListener('click', updateCustomer);
+    }
 }
 
+function setupCustomerEventListeners() {
+    // Add customer button
+    const addCustomerBtn = document.getElementById('addCustomerBtn');
+    if (addCustomerBtn) {
+        addCustomerBtn.addEventListener('click', showAddCustomerModal);
+    }
+
+    // Save customer button
+    const saveCustomerBtn = document.getElementById('saveCustomerBtn');
+    if (saveCustomerBtn) {
+        saveCustomerBtn.addEventListener('click', saveCustomer);
+    }
+
+    // Search customers
+    const searchCustomers = document.getElementById('searchCustomers');
+    if (searchCustomers) {
+        searchCustomers.addEventListener('input', filterCustomers);
+    }
+
+    // Customer type filter
+    const filterCustomerType = document.getElementById('filterCustomerType');
+    if (filterCustomerType) {
+        filterCustomerType.addEventListener('change', filterCustomers);
+    }
+
+    // Clear customer filters
+    const clearCustomerFilters = document.getElementById('clearCustomerFilters');
+    if (clearCustomerFilters) {
+        clearCustomerFilters.addEventListener('click', function() {
+            document.getElementById('searchCustomers').value = '';
+            document.getElementById('filterCustomerType').value = '';
+            filterCustomers();
+        });
+    }
+
+    // Edit customer modal setup
+    const saveEditCustomerBtn = document.getElementById('saveEditCustomerBtn');
+    if (saveEditCustomerBtn) {
+        saveEditCustomerBtn.addEventListener('click', updateCustomer);
+    }
+}
+
+// Rest of your existing functions remain the same...
 async function loadCustomers() {
     try {
         showLoading('Loading customers...');
@@ -59,6 +90,8 @@ async function loadCustomers() {
 function displayCustomers(customers) {
     const tbody = document.getElementById('customersTableBody');
     const customerSelects = document.querySelectorAll('.customer-select');
+    
+    if (!tbody) return;
     
     if (customers.length === 0) {
         tbody.innerHTML = `
@@ -124,6 +157,8 @@ function updateCustomerSelects(customers, selects) {
     const sortedCustomers = customers.sort((a, b) => a.name.localeCompare(b.name));
     
     selects.forEach(select => {
+        if (!select) return;
+        
         const currentValue = select.value;
         select.innerHTML = '<option value="">-- Select Customer --</option>';
         
@@ -147,7 +182,10 @@ function getCustomerInitials(name) {
 }
 
 function showAddCustomerModal() {
-    document.getElementById('customerModalLabel').textContent = 'Add New Customer';
+    const modalLabel = document.getElementById('customerModalLabel');
+    if (!modalLabel) return;
+    
+    modalLabel.textContent = 'Add New Customer';
     document.getElementById('customerForm').reset();
     document.getElementById('customerId').value = '';
     document.getElementById('customerStatus').value = 'active';
@@ -181,7 +219,9 @@ async function saveCustomer() {
         
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('customerModal'));
-        modal.hide();
+        if (modal) {
+            modal.hide();
+        }
         
         showToast('Customer saved successfully!', 'success');
         
@@ -210,7 +250,10 @@ async function editCustomer(customerId) {
         const customer = doc.data();
         
         // Populate form
-        document.getElementById('customerModalLabel').textContent = 'Edit Customer';
+        const modalLabel = document.getElementById('customerModalLabel');
+        if (modalLabel) {
+            modalLabel.textContent = 'Edit Customer';
+        }
         document.getElementById('customerId').value = customerId;
         document.getElementById('customerName').value = customer.name || '';
         document.getElementById('customerContact').value = customer.contact || '';
@@ -252,7 +295,9 @@ async function updateCustomer() {
         
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('customerModal'));
-        modal.hide();
+        if (modal) {
+            modal.hide();
+        }
         
         showToast('Customer updated successfully!', 'success');
         
@@ -314,8 +359,11 @@ async function deleteCustomer(customerId) {
 
 function selectCustomerForInvoice(customerId) {
     // Switch to generate invoice tab
-    const generateTab = new bootstrap.Tab(document.getElementById('generate-tab'));
-    generateTab.show();
+    const generateTab = document.getElementById('generate-tab');
+    if (generateTab) {
+        const tab = new bootstrap.Tab(generateTab);
+        tab.show();
+    }
     
     // Load customer data after a short delay
     setTimeout(async () => {
@@ -343,17 +391,21 @@ function selectCustomerForInvoice(customerId) {
 }
 
 function filterCustomers() {
-    const searchTerm = document.getElementById('searchCustomers').value.toLowerCase();
-    const typeFilter = document.getElementById('filterCustomerType').value;
+    const searchTerm = document.getElementById('searchCustomers')?.value.toLowerCase() || '';
+    const typeFilter = document.getElementById('filterCustomerType')?.value || '';
     
-    const rows = document.querySelectorAll('#customersTableBody tr');
+    const tbody = document.getElementById('customersTableBody');
+    if (!tbody) return;
+    
+    const rows = tbody.querySelectorAll('tr');
     
     rows.forEach(row => {
         if (row.querySelector('td')) { // Skip the "no customers" row
             const name = row.cells[0].textContent.toLowerCase();
             const contact = row.cells[1].textContent.toLowerCase();
             const email = row.cells[2].textContent.toLowerCase();
-            const type = row.cells[0].querySelector('.badge').textContent.toLowerCase();
+            const typeBadge = row.cells[0].querySelector('.badge');
+            const type = typeBadge ? typeBadge.textContent.toLowerCase() : '';
             
             const matchesSearch = !searchTerm || 
                                 name.includes(searchTerm) || 
@@ -378,9 +430,9 @@ function populateCustomerDropdown(selectElement) {
 
 // Quick customer add from invoice form
 function quickAddCustomer() {
-    const name = document.getElementById('customerName').value;
-    const contact = document.getElementById('customerContact').value;
-    const address = document.getElementById('customerAddress').value;
+    const name = document.getElementById('customerName')?.value || '';
+    const contact = document.getElementById('customerContact')?.value || '';
+    const address = document.getElementById('customerAddress')?.value || '';
     
     if (!name) {
         showToast('Please enter customer name first', 'warning');
@@ -388,7 +440,10 @@ function quickAddCustomer() {
     }
     
     // Pre-fill the customer modal
-    document.getElementById('customerModalLabel').textContent = 'Add New Customer';
+    const modalLabel = document.getElementById('customerModalLabel');
+    if (modalLabel) {
+        modalLabel.textContent = 'Add New Customer';
+    }
     document.getElementById('customerId').value = '';
     document.getElementById('customerName').value = name;
     document.getElementById('customerContact').value = contact;
