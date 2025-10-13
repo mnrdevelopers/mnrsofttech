@@ -1561,8 +1561,11 @@ function formatInvoiceDateForDisplay(invoice) {
     return 'N/A';
 }
 
-// Add these loading functions at the top of script.js
+// Enhanced Loading Functions
 function showLoading(message = 'Processing...') {
+    // Remove existing loading overlay if any
+    hideLoading();
+    
     const loadingHTML = `
         <div class="loading-overlay" id="loadingOverlay">
             <div class="loading-spinner"></div>
@@ -1570,6 +1573,9 @@ function showLoading(message = 'Processing...') {
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', loadingHTML);
+    
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
 }
 
 function hideLoading() {
@@ -1577,6 +1583,66 @@ function hideLoading() {
     if (loadingOverlay) {
         loadingOverlay.remove();
     }
+    
+    // Restore body scroll
+    document.body.style.overflow = '';
+}
+
+// Enhanced Toast Notification System
+function showToast(message, type = 'info', duration = 5000) {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.custom-toast');
+    existingToasts.forEach(toast => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    });
+
+    const toast = document.createElement('div');
+    toast.className = `custom-toast toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="toast-icon ${getToastIcon(type)}"></i>
+            <span class="toast-message">${message}</span>
+            <button class="toast-close" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Show toast with animation
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 100);
+
+    // Auto remove after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, duration);
+    }
+
+    return toast;
+}
+
+function getToastIcon(type) {
+    const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        warning: 'fas fa-exclamation-triangle',
+        info: 'fas fa-info-circle'
+    };
+    return icons[type] || icons.info;
+}
+
+// Enhanced Alert function (for backward compatibility)
+function showAlert(message, type = 'info') {
+    showToast(message, type, 5000);
 }
 
 function setButtonLoading(button, isLoading) {
