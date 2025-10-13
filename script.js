@@ -1735,3 +1735,48 @@ function showAlert(message, type) {
         }
     }, 5000);
 }
+
+// Customer selection handler
+document.addEventListener('DOMContentLoaded', function() {
+    // Add customer quick save button to invoice form
+    const customerFields = `
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label class="form-label">Customer Information</label>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="quickAddCustomer()">
+                        <i class="fas fa-user-plus me-1"></i>Save as Customer
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Insert after customer name field or at appropriate location
+    const customerNameField = document.getElementById('customerName');
+    if (customerNameField) {
+        customerNameField.insertAdjacentHTML('afterend', customerFields);
+    }
+});
+
+// Function to load customer data when selected from dropdown (for other modules)
+function loadCustomerData(customerId) {
+    if (!customerId) return;
+    
+    db.collection('customers').doc(customerId).get().then(doc => {
+        if (doc.exists) {
+            const customer = doc.data();
+            document.getElementById('customerName').value = customer.name || '';
+            document.getElementById('customerContact').value = customer.contact || '';
+            document.getElementById('customerAddress').value = customer.address || '';
+            
+            if (customer.customerType === 'monthly') {
+                document.getElementById('paymentType').value = 'monthly';
+                // Trigger the change event to show monthly fields
+                document.getElementById('paymentType').dispatchEvent(new Event('change'));
+            }
+        }
+    }).catch(error => {
+        console.error('Error loading customer data:', error);
+    });
+}
