@@ -1212,59 +1212,85 @@ footer p {
     }
 }
 
-/* Login Styles */
-.login-container {
-    min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* Auth Modal Styles */
+#authModal .modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+#authModal .modal-header {
+    border-radius: 15px 15px 0 0;
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+#authModal .modal-body {
     padding: 2rem;
 }
 
-.login-card {
-    background: white;
-    border-radius: 20px;
-    padding: 3rem;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
+#authModal .modal-footer {
+    border-top: none;
+    padding: 1rem 2rem;
+    background-color: #f8f9fa;
+    border-radius: 0 0 15px 15px;
 }
 
-.login-header {
-    margin-bottom: 2rem;
+/* Auth form styles */
+#authForm .input-group-text {
+    background-color: #f8f9fa;
+    border-right: none;
 }
 
-.login-header h2 {
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
-    font-weight: 700;
+#authForm .form-control {
+    border-left: none;
+    padding-left: 0;
 }
 
-.login-header p {
-    color: #666;
+#authForm .form-control:focus {
+    border-color: #ced4da;
+    box-shadow: none;
+}
+
+#authForm .form-control:focus + .input-group-text {
+    border-color: #667eea;
+}
+
+/* Shake animation for errors */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Auth error styles */
+#authError {
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem;
     font-size: 0.9rem;
 }
 
-.login-header i {
-    color: #667eea;
-}
-
-/* Logout Button */
+/* Logout button in header */
 #logoutBtn {
     margin-left: auto;
-    margin-right: 1rem;
+    white-space: nowrap;
 }
 
-/* Responsive login */
+/* Make sure header logo container is flex */
+.logo-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+/* Responsive auth modal */
 @media (max-width: 576px) {
-    .login-card {
-        padding: 2rem 1.5rem;
+    #authModal .modal-dialog {
         margin: 1rem;
     }
     
-    .login-container {
-        padding: 1rem;
+    #authModal .modal-body {
+        padding: 1.5rem;
     }
 }
