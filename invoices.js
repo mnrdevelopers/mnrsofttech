@@ -41,6 +41,7 @@ function setupInvoicesTab() {
     });
 }
 
+// Enhanced invoices functions
 async function loadInvoicesForTable() {
     try {
         // Show loading for table
@@ -68,7 +69,18 @@ async function loadInvoicesForTable() {
         
     } catch (error) {
         console.error('Error loading invoices:', error);
-        showAlert('Error loading invoices: ' + error.message, 'danger');
+        showToast('Error loading invoices: ' + error.message, 'error');
+        
+        const tbody = document.getElementById('invoicesTableBody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4 text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>Failed to load invoices</p>
+                    <small class="text-muted">${error.message}</small>
+                </td>
+            </tr>
+        `;
     }
 }
 
