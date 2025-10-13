@@ -1527,3 +1527,108 @@ footer p {
 .customer-details-popover {
     max-width: 300px;
 }
+
+/* Add these styles to fix the Monthly Consolidation layout gap */
+
+/* Fix for Monthly Consolidation tab layout */
+#consolidate .card {
+    margin-bottom: 0;
+}
+
+#consolidate .card-body {
+    padding: 1.5rem;
+}
+
+#consolidate .row.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+/* Ensure proper spacing in consolidation section */
+#consolidationResults {
+    margin-top: 1rem;
+}
+
+#consolidationResults .row {
+    margin-bottom: 0;
+}
+
+#consolidationResults .card {
+    margin-bottom: 1rem;
+}
+
+#consolidationResults .card:last-child {
+    margin-bottom: 0;
+}
+
+/* Fix for the filter row spacing */
+#consolidate .row.mb-4 > .col-md-4,
+#consolidate .row.mb-4 > .col-md-3,
+#consolidate .row.mb-4 > .col-md-2 {
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive fixes for consolidation layout */
+@media (max-width: 768px) {
+    #consolidate .row.mb-4 {
+        margin-bottom: 1rem !important;
+    }
+    
+    #consolidate .row.mb-4 > div {
+        margin-bottom: 0.75rem;
+    }
+    
+    #consolidationResults .row > .col-md-8,
+    #consolidationResults .row > .col-md-4 {
+        margin-bottom: 1rem;
+    }
+    
+    #consolidationResults .row > .col-md-8:last-child,
+    #consolidationResults .row > .col-md-4:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* Ensure proper button alignment */
+#consolidate .btn {
+    white-space: nowrap;
+}
+
+/* Fix for the load invoices button alignment */
+#loadInvoicesBtn {
+    margin-top: 1.8rem;
+}
+
+@media (max-width: 768px) {
+    #loadInvoicesBtn {
+        margin-top: 0;
+    }
+}
+
+/* Additional spacing fixes for the consolidation section */
+#consolidatedPreview {
+    margin-top: 1.5rem;
+}
+
+/* Ensure the consolidation summary has proper spacing */
+#consolidationSummary {
+    min-height: 200px;
+}
+
+/* Fix for table spacing in consolidation */
+#dailyInvoicesTable {
+    margin-bottom: 0;
+}
+
+#dailyInvoicesTable thead th {
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Button group spacing in consolidation */
+#consolidate .mt-3 .btn {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+#consolidate .mt-3 .btn:last-child {
+    margin-right: 0;
+}
