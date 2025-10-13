@@ -290,77 +290,74 @@ async function saveInvoiceToFirebase() {
         // Check if we're editing an existing invoice or creating new
         const isEditing = currentEditingInvoiceId !== null;
 
-        if (isEditing) {
-            // If editing, we're updating the existing invoice
-            console.log('Editing existing invoice:', currentEditingInvoiceId);
-        } else {
-            // If creating new, check if invoice number already exists
-            const existingDoc = await db.collection('invoices').doc(invoiceData.invoiceNumber).get();
-            if (existingDoc.exists) {
-                const response = confirm(`Invoice number ${invoiceData.invoiceNumber} already exists. Do you want to overwrite it? Click Cancel to generate a new number.`);
-                if (!response) {
-                    // Generate new number and return
-                    generateNewInvoiceNumber();
-                    return;
-                }
-            }
-        }
-        
         // Show loading state
         setFormLoading(true);
         setButtonLoading(saveBtn, true);
         showLoading(isEditing ? 'Updating invoice...' : 'Saving invoice...');
         
-        // Ensure amountPaid is properly calculated based on payment status
+        // Calculate payment amounts correctly
         let finalAmountPaid = 0;
+        let finalBalanceDue = invoiceData.grandTotal;
+        
         if (invoiceData.paymentStatus === 'paid') {
-            // If status is paid, amount paid should be equal to grand total
             finalAmountPaid = invoiceData.grandTotal;
+            finalBalanceDue = 0;
         } else if (invoiceData.paymentStatus === 'partial') {
-            // If status is partial, use the entered amount or default to 0
             finalAmountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+            finalBalanceDue = invoiceData.grandTotal - finalAmountPaid;
+            
+            if (finalAmountPaid <= 0) {
+                showToast('Please enter a valid partial payment amount', 'warning');
+                return;
+            }
         } else {
-            // If status is unpaid, amount paid is 0
+            // unpaid
             finalAmountPaid = 0;
+            finalBalanceDue = invoiceData.grandTotal;
         }
         
-        // Ensure dates are stored properly
+        // Prepare invoice data for saving
         const invoiceToSave = {
             ...invoiceData,
             amountPaid: finalAmountPaid,
-            balanceDue: invoiceData.grandTotal - finalAmountPaid,
+            balanceDue: finalBalanceDue,
             invoiceDate: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
             createdAt: invoiceData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
-        console.log('Saving invoice with payment data:', {
+        console.log('Saving invoice:', {
+            invoiceNumber: invoiceToSave.invoiceNumber,
             paymentStatus: invoiceToSave.paymentStatus,
             amountPaid: invoiceToSave.amountPaid,
             grandTotal: invoiceToSave.grandTotal,
-            balanceDue: invoiceToSave.balanceDue
+            balanceDue: invoiceToSave.balanceDue,
+            isEditing: isEditing
         });
         
-        // Save to Firestore
-        await db.collection('invoices').doc(invoiceData.invoiceNumber).set(invoiceToSave);
+        // Use the invoice number as the document ID for consistency
+        const docId = invoiceToSave.invoiceNumber;
         
-        // Show success message with toast
+        // Save to Firestore
+        await db.collection('invoices').doc(docId).set(invoiceToSave);
+        
+        // Show success message
         showToast(
             `Invoice ${isEditing ? 'updated' : 'saved'} successfully!`, 
             'success', 
             4000
         );
         
-        // Reset form after successful save (only for new invoices, not when editing)
-        if (!isEditing) {
-            resetForm();
-        } else {
-            // If editing, just show success message but don't reset the form
-            console.log('Invoice updated successfully, form not reset for further editing');
-        }
-        
         // Refresh dashboard
         updateDashboard();
+        
+        // If editing, keep the form filled for further edits
+        // If new invoice, reset the form
+        if (!isEditing) {
+            setTimeout(() => {
+                resetForm();
+            }, 1000);
+        }
         
     } catch (error) {
         console.error('Error saving invoice:', error);
