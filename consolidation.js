@@ -797,7 +797,7 @@ async function printConsolidatedInvoice() {
 }
 
 async function saveConsolidatedInvoice() {
-    const selectedInvoices = getSelectedInvoices();
+    const selectedInvoices = await getSelectedInvoices(); // Add await here
     const customer = document.getElementById('consolidateCustomer').value;
     const month = document.getElementById('consolidateMonth').value;
     const year = document.getElementById('consolidateYear').value;
@@ -819,16 +819,10 @@ async function saveConsolidatedInvoice() {
             invoiceNumber: consolidatedNumber,
             invoiceDate: new Date().toISOString().split('T')[0],
             customerName: customer,
-            customerContact: '',
-            customerAddress: '',
+            customerContact: selectedInvoices[0]?.customerContact || '',
+            customerAddress: selectedInvoices[0]?.customerAddress || '',
             notes: `Consolidated monthly invoice for ${monthName} ${year}. Includes ${selectedInvoices.length} daily service invoices.`,
-            items: [{
-                description: `Monthly Computer Services - ${monthName} ${year}`,
-                quantity: 1,
-                price: totalAmount,
-                warranty: 'no-warranty',
-                total: totalAmount
-            }],
+            items: selectedInvoices.flatMap(inv => inv.items || []),
             subtotal: totalAmount,
             grandTotal: totalAmount,
             paymentType: 'monthly',
