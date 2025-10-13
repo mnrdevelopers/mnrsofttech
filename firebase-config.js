@@ -1,4 +1,4 @@
-// firebase-config.js - Updated with popup auth
+// firebase-config.js - Fixed version
 const firebaseConfig = {
   apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
   authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
@@ -37,73 +37,108 @@ db.enablePersistence()
       console.log("Persistence failed:", err);
   });
 
-// Authentication state observer
+// Global auth state variable
+let isAuthenticated = false;
+
+// Authentication state observer - SIMPLIFIED
 auth.onAuthStateChanged((user) => {
+    console.log("Auth state changed:", user ? "User logged in" : "User logged out");
+    
     if (user) {
         // User is signed in
-        console.log("User is signed in:", user.email);
-        hideAuthModal();
-        showAppContent();
+        isAuthenticated = true;
+        console.log("User email:", user.email);
+        handleSuccessfulLogin();
     } else {
         // User is signed out
-        console.log("User is signed out");
-        showAuthModal();
-        hideAppContent();
+        isAuthenticated = false;
+        handleLogout();
     }
 });
 
-// Show auth modal
-function showAuthModal() {
-    const authModal = new bootstrap.Modal(document.getElementById('authModal'));
-    authModal.show();
-    
-    // Clear any previous errors
-    hideAuthError();
-    
-    // Focus on email field
-    setTimeout(() => {
-        document.getElementById('authEmail').focus();
-    }, 500);
-}
-
-// Hide auth modal
-function hideAuthModal() {
+// Handle successful login
+function handleSuccessfulLogin() {
+    // Hide auth modal
     const authModal = bootstrap.Modal.getInstance(document.getElementById('authModal'));
     if (authModal) {
         authModal.hide();
     }
-}
-
-// Show app content
-function showAppContent() {
+    
+    // Show app content
     document.querySelector('main').style.display = 'block';
     document.querySelector('header').style.display = 'block';
     document.querySelector('footer').style.display = 'block';
+    
+    // Add logout button
     addLogoutButton();
+    
+    // Initialize app functionality
+    initializeApp();
 }
 
-// Hide app content
-function hideAppContent() {
+// Handle logout
+function handleLogout() {
+    // Show auth modal
+    showAuthModal();
+    
+    // Hide app content
     document.querySelector('main').style.display = 'none';
     document.querySelector('header').style.display = 'none';
     document.querySelector('footer').style.display = 'none';
+    
+    // Remove logout button
     removeLogoutButton();
 }
 
-// Add logout button to header
+// Show auth modal
+function showAuthModal() {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeAuthModal();
+        });
+    } else {
+        initializeAuthModal();
+    }
+}
+
+function initializeAuthModal() {
+    const authModalElement = document.getElementById('authModal');
+    if (!authModalElement) return;
+    
+    const authModal = new bootstrap.Modal(authModalElement, {
+        backdrop: 'static',
+        keyboard: false
+    });
+    
+    authModal.show();
+    
+    // Clear form and focus
+    setTimeout(() => {
+        const authForm = document.getElementById('authForm');
+        if (authForm) authForm.reset();
+        
+        const authEmail = document.getElementById('authEmail');
+        if (authEmail) authEmail.focus();
+        
+        hideAuthError();
+    }, 500);
+}
+
+// Add logout button
 function addLogoutButton() {
-    // Remove existing logout button if any
-    removeLogoutButton();
+    removeLogoutButton(); // Remove existing first
     
     const logoutBtn = document.createElement('button');
     logoutBtn.id = 'logoutBtn';
     logoutBtn.className = 'btn btn-outline-light btn-sm ms-auto';
     logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt me-1"></i>Logout';
-    logoutBtn.addEventListener('click', handleLogout);
+    logoutBtn.addEventListener('click', handleUserLogout);
     
-    // Add to header
     const logoContainer = document.querySelector('.logo-container');
-    logoContainer.appendChild(logoutBtn);
+    if (logoContainer) {
+        logoContainer.appendChild(logoutBtn);
+    }
 }
 
 // Remove logout button
@@ -114,46 +149,12 @@ function removeLogoutButton() {
     }
 }
 
-// Handle authentication form submission
-document.addEventListener('DOMContentLoaded', function() {
-    const authForm = document.getElementById('authForm');
-    if (authForm) {
-        authForm.addEventListener('submit', handleAuth);
-    }
-});
-
-// Handle authentication
-async function handleAuth(e) {
-    e.preventDefault();
-    
-    const email = document.getElementById('authEmail').value;
-    const password = document.getElementById('authPassword').value;
-    const submitBtn = document.getElementById('authSubmitBtn');
-    
-    try {
-        setAuthButtonLoading(submitBtn, true);
-        hideAuthError();
-        
-        const userCredential = await auth.signInWithEmailAndPassword(email, password);
-        console.log("Authentication successful:", userCredential.user.email);
-        
-        // Show success message
-        showToast('Welcome back!', 'success');
-        
-    } catch (error) {
-        console.error("Authentication error:", error);
-        showAuthError(getAuthErrorMessage(error));
-    } finally {
-        setAuthButtonLoading(submitBtn, false);
-    }
-}
-
-// Handle logout
-async function handleLogout() {
+// Handle user-initiated logout
+async function handleUserLogout() {
     try {
         showLoading('Signing out...');
         await auth.signOut();
-        showToast('You have been signed out', 'info');
+        showToast('You have been signed out successfully', 'info');
     } catch (error) {
         console.error("Logout error:", error);
         showToast('Error signing out: ' + error.message, 'error');
@@ -162,29 +163,99 @@ async function handleLogout() {
     }
 }
 
+// Initialize app after login
+function initializeApp() {
+    console.log("Initializing app...");
+    
+    // Initialize your tabs and functionality here
+    if (typeof initializeDashboard === 'function') {
+        initializeDashboard();
+    }
+    
+    if (typeof setupInvoicesTab === 'function') {
+        setupInvoicesTab();
+    }
+    
+    if (typeof initializeConsolidationTab === 'function') {
+        initializeConsolidationTab();
+    }
+    
+    if (typeof initializeBulkPayments === 'function') {
+        initializeBulkPayments();
+    }
+    
+    // Show success message
+    setTimeout(() => {
+        showToast('Welcome back! Application loaded successfully.', 'success');
+    }, 1000);
+}
+
+// Auth form handling
+document.addEventListener('DOMContentLoaded', function() {
+    const authForm = document.getElementById('authForm');
+    if (authForm) {
+        authForm.addEventListener('submit', handleAuthSubmit);
+    }
+});
+
+// Handle auth form submission
+async function handleAuthSubmit(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('authEmail').value;
+    const password = document.getElementById('authPassword').value;
+    const submitBtn = document.getElementById('authSubmitBtn');
+    
+    if (!email || !password) {
+        showAuthError('Please fill in all fields');
+        return;
+    }
+    
+    try {
+        setAuthButtonLoading(submitBtn, true);
+        hideAuthError();
+        
+        console.log("Attempting login...");
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        console.log("Login successful:", userCredential.user.email);
+        
+        // The auth state observer will handle the rest
+        
+    } catch (error) {
+        console.error("Login error:", error);
+        showAuthError(getAuthErrorMessage(error));
+        setAuthButtonLoading(submitBtn, false);
+    }
+}
+
 // Show auth error
 function showAuthError(message) {
     const errorDiv = document.getElementById('authError');
     const errorMessage = document.getElementById('authErrorMessage');
     
-    errorMessage.textContent = message;
-    errorDiv.classList.remove('d-none');
-    
-    // Shake animation for error
-    errorDiv.style.animation = 'shake 0.5s ease-in-out';
-    setTimeout(() => {
-        errorDiv.style.animation = '';
-    }, 500);
+    if (errorDiv && errorMessage) {
+        errorMessage.textContent = message;
+        errorDiv.classList.remove('d-none');
+        
+        errorDiv.style.animation = 'shake 0.5s ease-in-out';
+        setTimeout(() => {
+            errorDiv.style.animation = '';
+        }, 500);
+    }
 }
 
 // Hide auth error
 function hideAuthError() {
     const errorDiv = document.getElementById('authError');
-    errorDiv.classList.add('d-none');
+    if (errorDiv) {
+        errorDiv.classList.add('d-none');
+    }
 }
 
 // Set auth button loading state
 function setAuthButtonLoading(button, isLoading) {
+    if (!button) return;
+    
     if (isLoading) {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing In...';
@@ -194,7 +265,7 @@ function setAuthButtonLoading(button, isLoading) {
     }
 }
 
-// Get user-friendly auth error messages
+// Get auth error messages
 function getAuthErrorMessage(error) {
     switch (error.code) {
         case 'auth/invalid-email':
@@ -212,6 +283,11 @@ function getAuthErrorMessage(error) {
         default:
             return 'Login failed. Please check your credentials.';
     }
+}
+
+// Check if user is authenticated
+function checkAuth() {
+    return isAuthenticated;
 }
 
 // Utility function to parse Firebase dates safely
@@ -232,12 +308,15 @@ function parseFirebaseDate(dateValue) {
 // Test Firestore connection
 async function testFirebaseConnection() {
     try {
-        const testDocRef = db.collection('test').doc('connection');
-        await testDocRef.set({
-            test: true,
-            timestamp: new Date().toISOString()
-        });
-        console.log("Firestore connection test successful");
+        // Only test if authenticated
+        if (isAuthenticated) {
+            const testDocRef = db.collection('test').doc('connection');
+            await testDocRef.set({
+                test: true,
+                timestamp: new Date().toISOString()
+            });
+            console.log("Firestore connection test successful");
+        }
         return true;
     } catch (error) {
         console.error("Firestore connection test failed:", error);
@@ -246,4 +325,7 @@ async function testFirebaseConnection() {
 }
 
 // Initialize on load
-setTimeout(testFirebaseConnection, 1000);
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM loaded, checking auth state...");
+    // Auth state observer will handle the rest
+});
