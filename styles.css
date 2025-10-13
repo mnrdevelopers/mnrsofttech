@@ -1294,3 +1294,204 @@ footer p {
         padding: 1.5rem;
     }
 }
+
+/* PWA and Mobile Optimization Styles */
+/* ================================= */
+
+/* Prevent zoom on input focus for iOS */
+@media screen and (max-width: 768px) {
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* Better touch targets for mobile */
+.btn, .nav-link, .form-control, .form-select {
+    min-height: 44px;
+}
+
+/* Mobile-optimized tables */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 14px;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem;
+    }
+    
+    /* Stack table columns on mobile */
+    .table-mobile-stack td {
+        display: block;
+        text-align: right;
+        padding: 0.75rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .table-mobile-stack td::before {
+        content: attr(data-label);
+        float: left;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 0.8em;
+    }
+}
+
+/* Mobile-optimized forms */
+@media (max-width: 768px) {
+    .form-container, .preview-container {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .item-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .button-group .btn {
+        margin-bottom: 0.5rem;
+        width: 100%;
+    }
+}
+
+/* Safe area insets for notch devices */
+@supports(padding: max(0px)) {
+    body, header, footer {
+        padding-left: min(0vmin, env(safe-area-inset-left));
+        padding-right: min(0vmin, env(safe-area-inset-right));
+        padding-top: min(0vmin, env(safe-area-inset-top));
+        padding-bottom: min(0vmin, env(safe-area-inset-bottom));
+    }
+}
+
+/* PWA-specific styles */
+@media all and (display-mode: standalone) {
+    body {
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    
+    /* Hide browser UI elements in standalone mode */
+    header {
+        padding-top: env(safe-area-inset-top);
+    }
+    
+    /* Add padding for status bar */
+    .pwa-safe-top {
+        padding-top: env(safe-area-inset-top);
+    }
+    
+    .pwa-safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* Mobile-optimized modals */
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .modal-content {
+        border-radius: 10px;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+}
+
+/* Better mobile navigation */
+.nav-tabs .nav-link {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Mobile-optimized invoice preview */
+@media (max-width: 768px) {
+    .invoice-template {
+        padding: 1rem;
+        font-size: 14px;
+    }
+    
+    .invoice-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .invoice-table {
+        font-size: 12px;
+    }
+    
+    .invoice-table th,
+    .invoice-table td {
+        padding: 0.5rem;
+    }
+}
+
+/* Install Prompt Styling */
+.install-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 1rem;
+    z-index: 10000;
+    max-width: 400px;
+    width: 90%;
+    border-left: 4px solid #667eea;
+}
+
+/* Loading animation for PWA */
+.pwa-loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    color: white;
+}
+
+.pwa-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top: 3px solid white;
+    border-radius: 50%;
+    animation: pwa-spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes pwa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Print styles for PWA */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .invoice-template {
+        box-shadow: none;
+        border: none;
+        margin: 0;
+        padding: 0;
+    }
+}
