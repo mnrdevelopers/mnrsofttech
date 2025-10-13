@@ -102,10 +102,17 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="mb-3">
-                                        <label for="customerName" class="form-label">Customer Name</label>
-                                        <input type="text" class="form-control" id="customerName" required>
-                                    </div>
+                                   <div class="mb-3">
+    <label for="customerSelect" class="form-label">Select Customer</label>
+    <select class="form-select customer-select" id="customerSelect" onchange="loadCustomerData(this.value)">
+        <option value="">-- Select Customer --</option>
+    </select>
+</div>
+
+<div class="mb-3">
+    <label for="customerName" class="form-label">Customer Name *</label>
+    <input type="text" class="form-control" id="customerName" required>
+</div>
                                     
                                     <div class="row">
                                         <div class="col-md-6">
