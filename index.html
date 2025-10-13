@@ -719,5 +719,30 @@
 <script src="dashboard.js"></script>
 <script src="bulk-payments.js"></script>
 <script src="consolidation.js"></script> <!-- This loads last -->
+<script src="pwa.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show PWA loading screen
+    const loadingHTML = `
+        <div class="pwa-loading" id="pwaLoading">
+            <div class="pwa-loading-spinner"></div>
+            <h3>MNR SoftTech</h3>
+            <p>Loading...</p>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('afterbegin', loadingHTML);
+    
+    // Hide loading screen when app is ready
+    window.addEventListener('load', function() {
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('pwaLoading');
+            if (loadingScreen) {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => loadingScreen.remove(), 500);
+            }
+        }, 1000);
+    });
+});
+</script>
 </body>
 </html>
