@@ -66,7 +66,7 @@ async function loadUnpaidInvoicesForBulk() {
     const customer = document.getElementById('bulkPaymentCustomer').value;
     
     if (!customer) {
-        showAlert('Please select a customer', 'warning');
+        showToast('Please select a customer', 'warning');
         return;
     }
     
@@ -95,12 +95,12 @@ async function loadUnpaidInvoicesForBulk() {
         unpaidInvoices.sort((a, b) => a.originalDate - b.originalDate);
         
         displayUnpaidInvoices(unpaidInvoices);
-        hideLoading();
         
     } catch (error) {
         console.error('Error loading unpaid invoices:', error);
+        showToast('Error loading unpaid invoices: ' + error.message, 'error');
+    } finally {
         hideLoading();
-        showAlert('Error loading unpaid invoices: ' + error.message, 'danger');
     }
 }
 
@@ -200,7 +200,7 @@ async function markInvoicesAsPaid() {
     const paymentMethod = document.getElementById('paymentMethod').value;
     
     if (selectedInvoices.length === 0) {
-        showAlert('Please select at least one invoice to mark as paid', 'warning');
+        showToast('Please select at least one invoice to mark as paid', 'warning');
         return;
     }
     
@@ -217,7 +217,7 @@ async function markInvoicesAsPaid() {
     if (!confirmation) return;
     
     try {
-        showLoading(`Marking ${selectedInvoices.length} invoices as paid...`);
+        showLoading(`Processing payment for ${selectedInvoices.length} invoices...`);
         
         const batch = db.batch();
         
@@ -227,7 +227,7 @@ async function markInvoicesAsPaid() {
             // Update invoice with payment details
             const updateData = {
                 paymentStatus: 'paid',
-                amountPaid: invoice.totalAmount, // For partial invoices, this will be the full amount
+                amountPaid: invoice.totalAmount,
                 balanceDue: 0,
                 paymentDate: paymentDate,
                 paymentMethod: paymentMethod,
@@ -240,20 +240,20 @@ async function markInvoicesAsPaid() {
         // Commit the batch
         await batch.commit();
         
-        hideLoading();
-        showAlert(`Successfully marked ${selectedInvoices.length} invoices as paid!`, 'success');
+        showToast(`Successfully marked ${selectedInvoices.length} invoices as paid!`, 'success');
         
         // Refresh the invoices table and dashboard
         loadInvoicesForTable();
         updateDashboard();
         
         // Reload unpaid invoices for the same customer
-        loadUnpaidInvoicesForBulk();
+        setTimeout(() => loadUnpaidInvoicesForBulk(), 1000);
         
     } catch (error) {
         console.error('Error marking invoices as paid:', error);
+        showToast('Error marking invoices as paid: ' + error.message, 'error');
+    } finally {
         hideLoading();
-        showAlert('Error marking invoices as paid: ' + error.message, 'danger');
     }
 }
 
@@ -303,7 +303,7 @@ async function markInvoicesAsPartial() {
     const paymentMethod = document.getElementById('paymentMethod').value;
     
     if (!partialAmount || partialAmount <= 0) {
-        showAlert('Please enter a valid partial payment amount', 'warning');
+        showToast('Please enter a valid partial payment amount', 'warning');
         return;
     }
     
@@ -311,7 +311,7 @@ async function markInvoicesAsPartial() {
     const totalDue = selectedInvoices.reduce((sum, invoice) => sum + invoice.dueAmount, 0);
     
     if (partialAmount > totalDue) {
-        showAlert('Partial payment amount cannot exceed total due amount', 'warning');
+        showToast('Partial payment amount cannot exceed total due amount', 'warning');
         return;
     }
     
@@ -331,8 +331,8 @@ async function markInvoicesAsPartial() {
             
             const updateData = {
                 paymentStatus: newBalanceDue > 0 ? 'partial' : 'paid',
-                amountPaid: newAmountPaid,
-                balanceDue: newBalanceDue,
+                amountPaid: parseFloat(newAmountPaid.toFixed(2)),
+                balanceDue: parseFloat(newBalanceDue.toFixed(2)),
                 paymentDate: paymentDate,
                 paymentMethod: paymentMethod,
                 paymentNotes: paymentNotes,
@@ -345,24 +345,23 @@ async function markInvoicesAsPartial() {
         // Commit the batch
         await batch.commit();
         
-        hideLoading();
-        
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('partialPaymentModal'));
         modal.hide();
         
-        showAlert(`Partial payment of ₹${partialAmount.toFixed(2)} applied to ${selectedInvoices.length} invoices!`, 'success');
+        showToast(`Partial payment of ₹${partialAmount.toFixed(2)} applied to ${selectedInvoices.length} invoices!`, 'success');
         
         // Refresh the invoices table and dashboard
         loadInvoicesForTable();
         updateDashboard();
         
         // Reload unpaid invoices for the same customer
-        loadUnpaidInvoicesForBulk();
+        setTimeout(() => loadUnpaidInvoicesForBulk(), 1000);
         
     } catch (error) {
         console.error('Error processing partial payment:', error);
+        showToast('Error processing partial payment: ' + error.message, 'error');
+    } finally {
         hideLoading();
-        showAlert('Error processing partial payment: ' + error.message, 'danger');
     }
 }
