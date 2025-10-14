@@ -851,29 +851,24 @@
     <script src="pwa.js"></script>             <!-- PWA functionality -->
 
     <!-- Initialize PWA Loading -->
-  <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Show loading screen
-    const loadingHTML = `
-        <div class="pwa-loading" id="pwaLoading">
-            <div class="pwa-loading-spinner"></div>
-            <h3>MNR SoftTech</h3>
-            <p>Loading Application...</p>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('afterbegin', loadingHTML);
-    
-    // Hide loading screen when app is ready
-    window.addEventListener('load', function() {
-        setTimeout(() => {
-            const loadingScreen = document.getElementById('pwaLoading');
-            if (loadingScreen) {
-                loadingScreen.style.opacity = '0';
-                setTimeout(() => loadingScreen.remove(), 500);
-            }
-        }, 1000);
-    });
-});
-</script>
+    <script>
+        // Hide PWA loading screen when app is ready
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('pwaLoading');
+                if (loadingScreen) {
+                    loadingScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        if (loadingScreen.parentNode) {
+                            loadingScreen.remove();
+                        }
+                    }, 500);
+                }
+            }, 1000);
+        });
+
+        // Set current year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
 </body>
 </html>
