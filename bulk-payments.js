@@ -71,7 +71,7 @@ async function loadUnpaidInvoicesForBulk() {
     }
     
     try {
-        showLoading('Loading unpaid invoices...');
+        showLoading('Loading unpaid invoices...', 'dots');
         
         const snapshot = await db.collection('invoices')
             .where('customerName', '==', customer)
