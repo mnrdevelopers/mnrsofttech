@@ -1780,3 +1780,163 @@ function loadCustomerData(customerId) {
         console.error('Error loading customer data:', error);
     });
 }
+
+// Enhanced Loading System
+function showLoading(message = 'Processing...', type = 'spinner') {
+    // Remove existing loading overlay if any
+    hideLoading();
+    
+    const loadingHTML = `
+        <div class="loading-overlay" id="loadingOverlay">
+            ${type === 'dots' ? `
+                <div class="loading-dots">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            ` : `
+                <div class="loading-spinner"></div>
+            `}
+            <div class="loading-text">${message}</div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', loadingHTML);
+    
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+}
+
+function hideLoading() {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) {
+        loadingOverlay.remove();
+    }
+    
+    // Restore body scroll
+    document.body.style.overflow = '';
+}
+
+function showSectionLoading(sectionId, message = 'Loading...') {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    
+    // Create loading overlay for section
+    const loadingHTML = `
+        <div class="section-loading">
+            <div class="section-loading-content">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">${message}</div>
+            </div>
+        </div>
+    `;
+    
+    section.innerHTML = loadingHTML;
+}
+
+function hideSectionLoading(sectionId, content = '') {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    
+    if (content) {
+        section.innerHTML = content;
+    } else {
+        const loadingElement = section.querySelector('.section-loading');
+        if (loadingElement) {
+            loadingElement.remove();
+        }
+    }
+}
+
+function showTableLoading(tableBodyId, rows = 5) {
+    const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
+    
+    let skeletonHTML = '';
+    for (let i = 0; i < rows; i++) {
+        skeletonHTML += `
+            <tr class="table-loading">
+                <td colspan="8">
+                    <div class="skeleton-row">
+                        <div class="skeleton-avatar"></div>
+                        <div style="flex: 1;">
+                            <div class="skeleton-text short"></div>
+                            <div class="skeleton-text medium"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+    
+    tbody.innerHTML = skeletonHTML;
+}
+
+function showCardLoading(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    
+    card.classList.add('card-loading');
+}
+
+function hideCardLoading(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    
+    card.classList.remove('card-loading');
+}
+
+function setButtonLoading(button, isLoading, loadingText = 'Loading...') {
+    if (isLoading) {
+        button.disabled = true;
+        button.classList.add('btn-loading');
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = loadingText;
+    } else {
+        button.disabled = false;
+        button.classList.remove('btn-loading');
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+        }
+    }
+}
+
+function setFormLoading(formId, isLoading) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    
+    if (isLoading) {
+        form.classList.add('form-loading');
+    } else {
+        form.classList.remove('form-loading');
+    }
+}
+
+// Progress bar functions
+function showProgress(message = 'Processing...', initialProgress = 0) {
+    hideLoading();
+    
+    const progressHTML = `
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">${message}</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar" style="width: ${initialProgress}%"></div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', loadingHTML);
+}
+
+function updateProgress(progress, message = null) {
+    const progressBar = document.getElementById('progressBar');
+    const loadingText = document.querySelector('#loadingOverlay .loading-text');
+    
+    if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+    }
+    
+    if (message && loadingText) {
+        loadingText.textContent = message;
+    }
+}
