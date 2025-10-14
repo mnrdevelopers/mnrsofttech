@@ -12,10 +12,23 @@ document.addEventListener('DOMContentLoaded', function() {
 async function updateDashboard() {
     try {
         // Show loading state for dashboard cards
+        showCardLoading('dashboard-cards');
+        
         document.getElementById('totalIncome').textContent = 'Loading...';
         document.getElementById('pendingAmount').textContent = 'Loading...';
         document.getElementById('totalCustomers').textContent = 'Loading...';
         document.getElementById('monthlyCustomers').textContent = 'Loading...';
+
+          // Show loading for charts
+        const paymentChartCanvas = document.getElementById('paymentChart');
+        const incomeChartCanvas = document.getElementById('incomeChart');
+        
+        if (paymentChartCanvas) {
+            paymentChartCanvas.innerHTML = '<div class="preview-loading"><div class="loading-spinner"></div><p>Loading chart...</p></div>';
+        }
+        if (incomeChartCanvas) {
+            incomeChartCanvas.innerHTML = '<div class="preview-loading"><div class="loading-spinner"></div><p>Loading chart...</p></div>';
+        }
         
         const snapshot = await db.collection('invoices').get();
         let totalIncome = 0;
@@ -144,6 +157,10 @@ async function updateDashboard() {
         document.getElementById('pendingAmount').textContent = 'Error';
         document.getElementById('totalCustomers').textContent = 'Error';
         document.getElementById('monthlyCustomers').textContent = 'Error';
+        
+        showToast('Error loading dashboard data', 'error');
+    } finally {
+        hideCardLoading('dashboard-cards');
     }
 }
 
