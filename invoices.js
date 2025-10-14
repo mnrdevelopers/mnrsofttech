@@ -45,15 +45,7 @@ function setupInvoicesTab() {
 async function loadInvoicesForTable() {
     try {
         // Show loading for table
-        const tbody = document.getElementById('invoicesTableBody');
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center py-4">
-                    <div class="loading-spinner" style="margin: 0 auto;"></div>
-                    <p class="text-muted mt-2">Loading invoices...</p>
-                </td>
-            </tr>
-        `;
+        showTableLoading('invoicesTableBody', 8);
         
         const snapshot = await db.collection('invoices').orderBy('createdAt', 'desc').get();
         currentInvoices = [];
@@ -72,15 +64,21 @@ async function loadInvoicesForTable() {
         showToast('Error loading invoices: ' + error.message, 'error');
         
         const tbody = document.getElementById('invoicesTableBody');
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center py-4 text-danger">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                    <p>Failed to load invoices</p>
-                    <small class="text-muted">${error.message}</small>
-                </td>
-            </tr>
-        `;
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-4 text-danger">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>Failed to load invoices</p>
+                        <small class="text-muted">${error.message}</small>
+                        <br>
+                        <button class="btn btn-primary mt-2" onclick="loadInvoicesForTable()">
+                            <i class="fas fa-redo me-2"></i>Retry
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
     }
 }
 
@@ -239,6 +237,8 @@ function getPaymentStatusText(status) {
 
 async function viewInvoice(invoiceId) {
     try {
+        showLoading('Loading invoice details...');
+        
         const doc = await db.collection('invoices').doc(invoiceId).get();
         
         if (!doc.exists) {
@@ -259,6 +259,8 @@ async function viewInvoice(invoiceId) {
     } catch (error) {
         console.error('Error loading invoice:', error);
         showAlert('Error loading invoice: ' + error.message, 'danger');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -785,9 +787,6 @@ async function deleteInvoice(invoiceId) {
         const modal = bootstrap.Modal.getInstance(document.getElementById('deleteInvoiceModal'));
         modal.hide();
         
-        // Hide loading
-        hideLoading();
-        
         showAlert('Invoice deleted successfully!', 'success');
         
         // Refresh the invoices table and dashboard
@@ -796,11 +795,9 @@ async function deleteInvoice(invoiceId) {
         
     } catch (error) {
         console.error('Error deleting invoice:', error);
-        
-        // Hide loading on error
-        hideLoading();
-        
         showAlert('Error deleting invoice: ' + error.message, 'danger');
+    } finally {
+        hideLoading();
     }
 }
 
