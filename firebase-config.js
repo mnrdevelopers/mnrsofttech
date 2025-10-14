@@ -35,13 +35,6 @@ db.settings({
 db.enablePersistence()
   .catch((err) => {
       console.log("Persistence failed:", err);
-      if (err.code == 'failed-precondition') {
-          // Multiple tabs open, persistence can only be enabled in one tab at a time.
-          console.log('Persistence failed: Multiple tabs open');
-      } else if (err.code == 'unimplemented') {
-          // The current browser doesn't support all of the features required
-          console.log('Persistence not supported');
-      }
   });
 
 // Global auth state variable
