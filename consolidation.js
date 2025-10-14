@@ -856,3 +856,24 @@ async function saveConsolidatedInvoice() {
         hideLoading();
     }
 }
+
+// Add this function to ensure proper tab loading
+function ensureConsolidationTabLoaded() {
+    const tab = document.getElementById('consolidate-tab');
+    const tabContent = document.getElementById('consolidate');
+    
+    if (tab && tabContent) {
+        // Force reflow to ensure proper rendering
+        tabContent.style.display = 'block';
+        setTimeout(() => {
+            tabContent.style.display = '';
+        }, 100);
+    }
+}
+
+// Call this when the tab is shown
+document.getElementById('consolidate-tab').addEventListener('shown.bs.tab', function() {
+    ensureConsolidationTabLoaded();
+    loadCustomersForConsolidation();
+    populateMonthYearDropdowns();
+});
