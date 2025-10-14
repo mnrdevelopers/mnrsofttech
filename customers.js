@@ -4,27 +4,39 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeCustomersTab() {
-    // Wait for the customers tab to be shown before setting up event listeners
+    console.log('Initializing customers tab...');
+    
+    // Set up event listeners immediately
+    setupCustomerEventListeners();
+    
+    // Also load customers if the tab is active
+    if (document.getElementById('customers') && document.getElementById('customers').classList.contains('active')) {
+        console.log('Customers tab is active, loading customers...');
+        loadCustomers();
+    }
+
+    // Wait for the customers tab to be shown before loading customers
     const customersTab = document.getElementById('customers-tab');
     if (customersTab) {
         customersTab.addEventListener('shown.bs.tab', function() {
-            setupCustomerEventListeners();
+            console.log('Customers tab shown, loading customers...');
             loadCustomers();
         });
-    }
-
-    // Also set up event listeners if the tab is already active
-    if (document.getElementById('customers').classList.contains('active')) {
-        setupCustomerEventListeners();
-        loadCustomers();
+    } else {
+        console.error('Customers tab element not found!');
     }
 }
 
 function setupCustomerEventListeners() {
+    console.log('Setting up customer event listeners...');
+    
     // Add customer button
     const addCustomerBtn = document.getElementById('addCustomerBtn');
     if (addCustomerBtn) {
+        console.log('Found add customer button');
         addCustomerBtn.addEventListener('click', showAddCustomerModal);
+    } else {
+        console.error('Add customer button not found!');
     }
 
     // Save customer button
