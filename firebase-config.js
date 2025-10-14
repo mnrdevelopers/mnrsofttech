@@ -1,4 +1,4 @@
-// firebase-config.js - Fixed version
+// firebase-config.js - Fixed Authentication Version
 const firebaseConfig = {
   apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
   authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
@@ -9,6 +9,11 @@ const firebaseConfig = {
   measurementId: "G-HTGPVDVPCR"
 };
 
+// Global variables
+let db, auth;
+let isAuthenticated = false;
+let authModal = null;
+
 // Initialize Firebase
 try {
     if (!firebase.apps.length) {
@@ -18,40 +23,60 @@ try {
         firebase.app();
         console.log("Firebase already initialized");
     }
+    
+    // Initialize Firestore and Auth after Firebase is ready
+    db = firebase.firestore();
+    auth = firebase.auth();
+
+    // Firestore settings
+    db.settings({
+        ignoreUndefinedProperties: true
+    });
+
+    // Enable offline persistence
+    db.enablePersistence()
+      .catch((err) => {
+          console.log("Persistence failed:", err);
+          if (err.code == 'failed-precondition') {
+              console.log('Persistence failed: Multiple tabs open');
+          } else if (err.code == 'unimplemented') {
+              console.log('Persistence not supported');
+          }
+      });
+
 } catch (error) {
     console.error("Firebase initialization error:", error);
 }
 
-// Initialize Firestore and Auth
-const db = firebase.firestore();
-const auth = firebase.auth();
-
-// Firestore settings
-db.settings({
-    ignoreUndefinedProperties: true
-});
-
-// Global auth state variable
-let isAuthenticated = false;
-let authModalInitialized = false;
-
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM fully loaded, initializing auth...");
-    initializeAuthSystem();
+    console.log("DOM loaded, initializing authentication...");
+    initializeAuthentication();
 });
 
-function initializeAuthSystem() {
-    console.log("Initializing auth system...");
-    
+function initializeAuthentication() {
+    // Set up auth form handler
+    const authForm = document.getElementById('authForm');
+    if (authForm) {
+        authForm.addEventListener('submit', handleAuthSubmit);
+        console.log("Auth form event listener added");
+    } else {
+        console.error("Auth form not found");
+    }
+
+    // Initialize auth modal
+    initializeAuthModal();
+
     // Set up auth state observer
     setupAuthStateObserver();
-    
-    // Set up auth form handler
-    setupAuthFormHandler();
 }
 
 function setupAuthStateObserver() {
+    if (!auth) {
+        console.error("Auth not initialized");
+        return;
+    }
+
     auth.onAuthStateChanged((user) => {
         console.log("Auth state changed:", user ? "User logged in" : "User logged out");
         
@@ -67,89 +92,37 @@ function setupAuthStateObserver() {
         }
     }, (error) => {
         console.error("Auth state observer error:", error);
-        // Even if there's an error, show auth modal
-        handleLogout();
     });
 }
 
-function setupAuthFormHandler() {
-    const authForm = document.getElementById('authForm');
-    if (authForm) {
-        authForm.addEventListener('submit', handleAuthSubmit);
-        console.log("Auth form handler set up");
-    } else {
-        console.error("Auth form not found");
-        // Retry after a short delay
-        setTimeout(setupAuthFormHandler, 1000);
-    }
-}
-
-// Handle successful login
-function handleSuccessfulLogin() {
-    console.log("Handling successful login");
-    
-    // Hide auth modal
-    hideAuthModal();
-    
-    // Show app content
-    showAppContent();
-    
-    // Add logout button
-    addLogoutButton();
-    
-    // Initialize app functionality
-    initializeApp();
-}
-
-// Handle logout
-function handleLogout() {
-    console.log("Handling logout");
-    
-    // Hide app content first
-    hideAppContent();
-    
-    // Remove logout button
-    removeLogoutButton();
-    
-    // Show auth modal
-    showAuthModal();
-}
-
-// Show auth modal - FIXED VERSION
-function showAuthModal() {
-    console.log("Showing auth modal");
-    
-    // Ensure DOM is ready
-    if (document.readyState !== 'complete') {
-        console.log("DOM not ready, waiting...");
-        setTimeout(showAuthModal, 100);
-        return;
-    }
-    
+function initializeAuthModal() {
     const authModalElement = document.getElementById('authModal');
     if (!authModalElement) {
-        console.error("Auth modal element not found!");
-        // Try to create it dynamically if missing
-        createAuthModal();
+        console.error("Auth modal element not found");
         return;
     }
-    
+
     try {
-        let authModal = bootstrap.Modal.getInstance(authModalElement);
-        
-        if (!authModal) {
-            authModal = new bootstrap.Modal(authModalElement, {
-                backdrop: 'static',
-                keyboard: false
-            });
-            console.log("New auth modal instance created");
-        }
-        
-        // Show the modal
+        authModal = new bootstrap.Modal(authModalElement, {
+            backdrop: 'static',
+            keyboard: false
+        });
+        console.log("Auth modal initialized");
+    } catch (error) {
+        console.error("Error initializing auth modal:", error);
+    }
+}
+
+function showAuthModal() {
+    if (!authModal) {
+        console.error("Auth modal not initialized");
+        return;
+    }
+
+    try {
         authModal.show();
-        console.log("Auth modal shown");
         
-        // Clear form and focus
+        // Clear form and focus after modal is shown
         setTimeout(() => {
             const authForm = document.getElementById('authForm');
             if (authForm) authForm.reset();
@@ -157,63 +130,76 @@ function showAuthModal() {
             const authEmail = document.getElementById('authEmail');
             if (authEmail) {
                 authEmail.focus();
-                authEmail.value = ''; // Clear any cached values
             }
             
             hideAuthError();
-        }, 500);
-        
+        }, 300);
     } catch (error) {
         console.error("Error showing auth modal:", error);
-        // Fallback: show basic auth form
-        showFallbackAuth();
     }
 }
 
-// Hide auth modal
 function hideAuthModal() {
-    console.log("Hiding auth modal");
-    
-    const authModalElement = document.getElementById('authModal');
-    if (!authModalElement) return;
-    
+    if (!authModal) {
+        console.error("Auth modal not initialized");
+        return;
+    }
+
     try {
-        const authModal = bootstrap.Modal.getInstance(authModalElement);
-        if (authModal) {
-            authModal.hide();
-        }
+        authModal.hide();
     } catch (error) {
         console.error("Error hiding auth modal:", error);
     }
 }
 
-// Show app content
-function showAppContent() {
-    console.log("Showing app content");
+// Handle successful login
+function handleSuccessfulLogin() {
+    console.log("Handling successful login...");
     
-    const main = document.querySelector('main');
-    const header = document.querySelector('header');
-    const footer = document.querySelector('footer');
+    // Hide auth modal
+    hideAuthModal();
     
-    if (main) main.style.display = 'block';
-    if (header) header.style.display = 'block';
-    if (footer) footer.style.display = 'block';
+    // Show app content with a small delay to ensure smooth transition
+    setTimeout(() => {
+        const mainElement = document.querySelector('main');
+        const headerElement = document.querySelector('header');
+        const footerElement = document.querySelector('footer');
+        
+        if (mainElement) mainElement.style.display = 'block';
+        if (headerElement) headerElement.style.display = 'block';
+        if (footerElement) footerElement.style.display = 'block';
+        
+        // Add logout button
+        addLogoutButton();
+        
+        // Initialize app functionality
+        initializeApp();
+        
+        showToast('Welcome! Application loaded successfully.', 'success');
+    }, 500);
 }
 
-// Hide app content
-function hideAppContent() {
-    console.log("Hiding app content");
+// Handle logout
+function handleLogout() {
+    console.log("Handling logout...");
     
-    const main = document.querySelector('main');
-    const header = document.querySelector('header');
-    const footer = document.querySelector('footer');
+    // Show auth modal
+    showAuthModal();
     
-    if (main) main.style.display = 'none';
-    if (header) header.style.display = 'none';
-    if (footer) footer.style.display = 'none';
+    // Hide app content
+    const mainElement = document.querySelector('main');
+    const headerElement = document.querySelector('header');
+    const footerElement = document.querySelector('footer');
+    
+    if (mainElement) mainElement.style.display = 'none';
+    if (headerElement) headerElement.style.display = 'none';
+    if (footerElement) footerElement.style.display = 'none';
+    
+    // Remove logout button
+    removeLogoutButton();
 }
 
-// Add logout button
+// Add logout button to header
 function addLogoutButton() {
     removeLogoutButton(); // Remove existing first
     
@@ -227,6 +213,8 @@ function addLogoutButton() {
     if (logoContainer) {
         logoContainer.appendChild(logoutBtn);
         console.log("Logout button added");
+    } else {
+        console.error("Logo container not found for logout button");
     }
 }
 
@@ -241,6 +229,11 @@ function removeLogoutButton() {
 
 // Handle user-initiated logout
 async function handleUserLogout() {
+    if (!auth) {
+        console.error("Auth not initialized for logout");
+        return;
+    }
+
     try {
         showLoading('Signing out...');
         await auth.signOut();
@@ -256,37 +249,41 @@ async function handleUserLogout() {
 // Handle auth form submission
 async function handleAuthSubmit(e) {
     e.preventDefault();
-    console.log("Auth form submitted");
     
-    const email = document.getElementById('authEmail').value;
-    const password = document.getElementById('authPassword').value;
+    if (!auth) {
+        console.error("Auth not initialized for login");
+        showAuthError('Authentication system not ready. Please refresh the page.');
+        return;
+    }
+
+    const email = document.getElementById('authEmail')?.value;
+    const password = document.getElementById('authPassword')?.value;
     const submitBtn = document.getElementById('authSubmitBtn');
     
     if (!email || !password) {
         showAuthError('Please fill in all fields');
         return;
     }
-    
+
     try {
         setAuthButtonLoading(submitBtn, true);
         hideAuthError();
         
         console.log("Attempting login with email:", email);
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
-        console.log("Login successful:", userCredential.user.email);
+        console.log("Login successful for:", userCredential.user.email);
+        
+        // The auth state observer will handle the rest via handleSuccessfulLogin()
         
     } catch (error) {
         console.error("Login error:", error);
         showAuthError(getAuthErrorMessage(error));
         setAuthButtonLoading(submitBtn, false);
         
-        // Shake the modal for visual feedback
-        const authModalElement = document.getElementById('authModal');
-        if (authModalElement) {
-            authModalElement.style.animation = 'shake 0.5s ease-in-out';
-            setTimeout(() => {
-                authModalElement.style.animation = '';
-            }, 500);
+        // Re-focus on email field for correction
+        const authEmail = document.getElementById('authEmail');
+        if (authEmail) {
+            authEmail.focus();
         }
     }
 }
@@ -299,7 +296,14 @@ function showAuthError(message) {
     if (errorDiv && errorMessage) {
         errorMessage.textContent = message;
         errorDiv.classList.remove('d-none');
-        console.log("Auth error shown:", message);
+        
+        // Add shake animation
+        errorDiv.style.animation = 'none';
+        setTimeout(() => {
+            errorDiv.style.animation = 'shake 0.5s ease-in-out';
+        }, 10);
+    } else {
+        console.error("Auth error elements not found");
     }
 }
 
@@ -326,6 +330,10 @@ function setAuthButtonLoading(button, isLoading) {
 
 // Get auth error messages
 function getAuthErrorMessage(error) {
+    if (!error || !error.code) {
+        return 'An unexpected error occurred. Please try again.';
+    }
+    
     switch (error.code) {
         case 'auth/invalid-email':
             return 'Please enter a valid email address.';
@@ -339,91 +347,46 @@ function getAuthErrorMessage(error) {
             return 'Too many failed attempts. Please try again later.';
         case 'auth/network-request-failed':
             return 'Network error. Please check your connection.';
+        case 'auth/operation-not-allowed':
+            return 'Email/password sign-in is not enabled.';
         default:
-            return 'Login failed. Please check your credentials.';
+            return 'Login failed: ' + (error.message || 'Unknown error');
     }
 }
 
 // Initialize app after login
 function initializeApp() {
-    console.log("Initializing app functionality...");
+    console.log("Initializing application functionality...");
     
-    // Initialize your tabs and functionality here
+    // Initialize dashboard if function exists
     if (typeof initializeDashboard === 'function') {
+        console.log("Initializing dashboard...");
         initializeDashboard();
     }
     
+    // Initialize invoices tab if function exists
     if (typeof setupInvoicesTab === 'function') {
+        console.log("Initializing invoices tab...");
         setupInvoicesTab();
     }
     
+    // Initialize consolidation tab if function exists
     if (typeof initializeConsolidationTab === 'function') {
+        console.log("Initializing consolidation tab...");
         initializeConsolidationTab();
     }
     
+    // Initialize bulk payments if function exists
     if (typeof initializeBulkPayments === 'function') {
+        console.log("Initializing bulk payments...");
         initializeBulkPayments();
     }
     
-    // Show success message
-    setTimeout(() => {
-        showToast('Welcome back! Application loaded successfully.', 'success');
-    }, 1000);
-}
-
-// Emergency fallback if modal doesn't work
-function showFallbackAuth() {
-    console.log("Using fallback auth");
-    
-    // Create a simple overlay for auth
-    const fallbackAuth = document.createElement('div');
-    fallbackAuth.id = 'fallbackAuth';
-    fallbackAuth.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-    `;
-    
-    fallbackAuth.innerHTML = `
-        <div style="background: white; padding: 2rem; border-radius: 10px; max-width: 400px; width: 90%;">
-            <h3>Sign In Required</h3>
-            <form id="fallbackAuthForm">
-                <div class="mb-3">
-                    <label>Email:</label>
-                    <input type="email" class="form-control" id="fallbackEmail" required>
-                </div>
-                <div class="mb-3">
-                    <label>Password:</label>
-                    <input type="password" class="form-control" id="fallbackPassword" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100">Sign In</button>
-            </form>
-        </div>
-    `;
-    
-    document.body.appendChild(fallbackAuth);
-    
-    // Handle fallback form submission
-    document.getElementById('fallbackAuthForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const email = document.getElementById('fallbackEmail').value;
-        const password = document.getElementById('fallbackPassword').value;
-        
-        auth.signInWithEmailAndPassword(email, password)
-            .then(() => {
-                fallbackAuth.remove();
-            })
-            .catch(error => {
-                alert('Login failed: ' + error.message);
-            });
-    });
+    // Initialize customers if function exists
+    if (typeof initializeCustomersTab === 'function') {
+        console.log("Initializing customers tab...");
+        initializeCustomersTab();
+    }
 }
 
 // Check if user is authenticated
@@ -431,14 +394,44 @@ function checkAuth() {
     return isAuthenticated;
 }
 
-// Force show auth modal (for testing)
-window.showAuth = function() {
-    showAuthModal();
-};
+// Utility function to parse Firebase dates safely
+function parseFirebaseDate(dateValue) {
+    if (!dateValue) return new Date();
+    
+    if (dateValue.toDate && typeof dateValue.toDate === 'function') {
+        return dateValue.toDate();
+    } else if (typeof dateValue === 'string') {
+        return new Date(dateValue);
+    } else if (dateValue instanceof Date) {
+        return dateValue;
+    } else {
+        return new Date();
+    }
+}
 
-// Force logout (for testing)
-window.forceLogout = function() {
-    auth.signOut();
-};
+// Test Firestore connection (for debugging)
+async function testFirebaseConnection() {
+    if (!db || !isAuthenticated) {
+        console.log("Firestore test skipped - not authenticated or db not ready");
+        return false;
+    }
 
-console.log("Firebase config loaded successfully");
+    try {
+        const testDocRef = db.collection('test').doc('connection');
+        await testDocRef.set({
+            test: true,
+            timestamp: new Date().toISOString()
+        });
+        console.log("Firestore connection test successful");
+        return true;
+    } catch (error) {
+        console.error("Firestore connection test failed:", error);
+        return false;
+    }
+}
+
+// Make db and auth available globally
+window.db = db;
+window.auth = auth;
+window.checkAuth = checkAuth;
+window.handleUserLogout = handleUserLogout;
