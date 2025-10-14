@@ -93,7 +93,7 @@ function setupCustomerEventListeners() {
 async function loadCustomers() {
     try {
         console.log('Loading customers from Firestore...');
-        showLoading('Loading customers...');
+        showTableLoading('customersTableBody', 6);
         
         const snapshot = await db.collection('customers').orderBy('name').get();
         const customers = [];
@@ -129,8 +129,6 @@ async function loadCustomers() {
                 </tr>
             `;
         }
-    } finally {
-        hideLoading();
     }
 }
 
