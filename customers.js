@@ -1,4 +1,6 @@
 // customers.js - Customer Management System (Fixed Version)
+let customersInitialized = false;
+
 document.addEventListener('DOMContentLoaded', function() {
     initializeCustomersTab();
 });
@@ -9,13 +11,13 @@ function initializeCustomersTab() {
     // Set up event listeners immediately
     setupCustomerEventListeners();
     
-    // Also load customers if the tab is active
+    // Load customers if the tab is already active
     if (document.getElementById('customers') && document.getElementById('customers').classList.contains('active')) {
         console.log('Customers tab is active, loading customers...');
         loadCustomers();
     }
 
-    // Wait for the customers tab to be shown before loading customers
+    // Wait for the customers tab to be shown
     const customersTab = document.getElementById('customers-tab');
     if (customersTab) {
         customersTab.addEventListener('shown.bs.tab', function() {
@@ -24,19 +26,38 @@ function initializeCustomersTab() {
         });
     } else {
         console.error('Customers tab element not found!');
+        // Try again after a short delay
+        setTimeout(() => {
+            const retryTab = document.getElementById('customers-tab');
+            if (retryTab) {
+                retryTab.addEventListener('shown.bs.tab', function() {
+                    loadCustomers();
+                });
+            }
+        }, 1000);
     }
+    
+    customersInitialized = true;
 }
 
 function setupCustomerEventListeners() {
     console.log('Setting up customer event listeners...');
     
-    // Add customer button
+    // Add customer button - with retry logic
     const addCustomerBtn = document.getElementById('addCustomerBtn');
     if (addCustomerBtn) {
         console.log('Found add customer button');
         addCustomerBtn.addEventListener('click', showAddCustomerModal);
     } else {
         console.error('Add customer button not found!');
+        // Try to find it again after a delay
+        setTimeout(() => {
+            const retryBtn = document.getElementById('addCustomerBtn');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', showAddCustomerModal);
+                console.log('Add customer button found on retry');
+            }
+        }, 500);
     }
 
     // Save customer button
@@ -66,16 +87,12 @@ function setupCustomerEventListeners() {
             filterCustomers();
         });
     }
-
-    // Edit customer modal setup
-    const saveEditCustomerBtn = document.getElementById('saveEditCustomerBtn');
-    if (saveEditCustomerBtn) {
-        saveEditCustomerBtn.addEventListener('click', updateCustomer);
-    }
 }
 
+// Enhanced loadCustomers function with better error handling
 async function loadCustomers() {
     try {
+        console.log('Loading customers from Firestore...');
         showLoading('Loading customers...');
         
         const snapshot = await db.collection('customers').orderBy('name').get();
@@ -88,11 +105,30 @@ async function loadCustomers() {
             });
         });
 
+        console.log(`Loaded ${customers.length} customers`);
         displayCustomers(customers);
         
     } catch (error) {
         console.error('Error loading customers:', error);
         showToast('Error loading customers: ' + error.message, 'error');
+        
+        // Show error state in table
+        const tbody = document.getElementById('customersTableBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-danger">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>Failed to load customers</p>
+                        <small class="text-muted">${error.message}</small>
+                        <br>
+                        <button class="btn btn-primary mt-2" onclick="loadCustomers()">
+                            <i class="fas fa-redo me-2"></i>Retry
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
     } finally {
         hideLoading();
     }
@@ -102,7 +138,10 @@ function displayCustomers(customers) {
     const tbody = document.getElementById('customersTableBody');
     const customerSelects = document.querySelectorAll('.customer-select');
     
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('Customers table body not found!');
+        return;
+    }
     
     if (customers.length === 0) {
         tbody.innerHTML = `
@@ -193,16 +232,26 @@ function getCustomerInitials(name) {
 }
 
 function showAddCustomerModal() {
+    console.log('Showing add customer modal');
+    
     const modalLabel = document.getElementById('customerModalLabel');
-    if (!modalLabel) return;
+    if (!modalLabel) {
+        console.error('Customer modal label not found!');
+        return;
+    }
     
     modalLabel.textContent = 'Add New Customer';
     document.getElementById('customerForm').reset();
     document.getElementById('customerId').value = '';
     document.getElementById('customerStatus').value = 'active';
     
-    const modal = new bootstrap.Modal(document.getElementById('customerModal'));
-    modal.show();
+    const modalElement = document.getElementById('customerModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    } else {
+        console.error('Customer modal element not found!');
+    }
 }
 
 async function saveCustomer() {
@@ -229,9 +278,12 @@ async function saveCustomer() {
         await db.collection('customers').doc(customerId).set(customerToSave);
         
         // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('customerModal'));
-        if (modal) {
-            modal.hide();
+        const modalElement = document.getElementById('customerModal');
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
         }
         
         showToast('Customer saved successfully!', 'success');
@@ -274,8 +326,11 @@ async function editCustomer(customerId) {
         document.getElementById('customerStatus').value = customer.status || 'active';
         document.getElementById('customerNotes').value = customer.notes || '';
         
-        const modal = new bootstrap.Modal(document.getElementById('customerModal'));
-        modal.show();
+        const modalElement = document.getElementById('customerModal');
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
         
     } catch (error) {
         console.error('Error loading customer:', error);
@@ -305,9 +360,12 @@ async function updateCustomer() {
         await db.collection('customers').doc(customerId).update(customerToUpdate);
         
         // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('customerModal'));
-        if (modal) {
-            modal.hide();
+        const modalElement = document.getElementById('customerModal');
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
         }
         
         showToast('Customer updated successfully!', 'success');
@@ -467,6 +525,15 @@ function quickAddCustomer() {
     document.getElementById('modalCustomerEmail').value = '';
     document.getElementById('customerNotes').value = '';
     
-    const modal = new bootstrap.Modal(document.getElementById('customerModal'));
-    modal.show();
+    const modalElement = document.getElementById('customerModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
+}
+
+// Force reload customers (can be called from console for debugging)
+function forceReloadCustomers() {
+    console.log('Force reloading customers...');
+    loadCustomers();
 }
