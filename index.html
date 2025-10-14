@@ -36,48 +36,50 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <div class="logo-container">
-            <div class="logo-icon">
-                <i class="fas fa-laptop-code"></i>
-            </div>
-            <div class="logo-text">
-                <h1>MNR SOFTTECH SOLUTIONS</h1>
-                <p>Computer Software & Hardware Services</p>
-            </div>
+  <header>
+    <div class="logo-container">
+        <div class="logo-icon">
+            <i class="fas fa-laptop-code"></i>
         </div>
-    </header>
+        <div class="logo-text">
+            <h1>MNR SOFTTECH SOLUTIONS</h1>
+            <p>Computer Software & Hardware Services</p>
+        </div>
+    </div>
+</header>
 
-    <main>
-        <!-- Navigation Tabs -->
-        <div class="container mt-4">
-            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="generate-tab" data-bs-toggle="tab" data-bs-target="#generate" type="button" role="tab">
-                        <i class="fas fa-file-invoice me-2"></i>Generate Invoice
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab">
-                        <i class="fas fa-list me-2"></i>Invoices
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
-                        <i class="fas fa-chart-bar me-2"></i>Dashboard
-                    </button>
-                </li>
-                  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="customers-tab" data-bs-toggle="tab" data-bs-target="#customers" type="button" role="tab">
-        <i class="fas fa-users me-2"></i>Customers
-    </button>
-</li>
+<main>
+    <!-- Navigation Tabs -->
+    <div class="container mt-4">
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">
-    <button class="nav-link" id="consolidate-tab" data-bs-toggle="tab" data-bs-target="#consolidate" type="button" role="tab">
-        <i class="fas fa-file-contract me-2"></i>Monthly Consolidation
-    </button>
-</li>
-    </ul>
+                <button class="nav-link active" id="generate-tab" data-bs-toggle="tab" data-bs-target="#generate" type="button" role="tab" aria-controls="generate" aria-selected="true">
+                    <i class="fas fa-file-invoice me-2"></i>Generate Invoice
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab" aria-controls="invoices" aria-selected="false">
+                    <i class="fas fa-list me-2"></i>Invoices
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="false">
+                    <i class="fas fa-chart-bar me-2"></i>Dashboard
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="customers-tab" data-bs-toggle="tab" data-bs-target="#customers" type="button" role="tab" aria-controls="customers" aria-selected="false">
+                    <i class="fas fa-users me-2"></i>Customers
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="consolidate-tab" data-bs-toggle="tab" data-bs-target="#consolidate" type="button" role="tab" aria-controls="consolidate" aria-selected="false">
+                    <i class="fas fa-file-contract me-2"></i>Monthly Consolidation
+                </button>
+            </li>
+        </ul>
+    </div>
+</main>
 
        <div class="tab-content" id="mainTabsContent">
     <!-- Generate Invoice Tab -->
