@@ -1,18 +1,4 @@
-// firebase-config.js - Updated to v9+ modular SDK
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
-import { 
-    getFirestore, 
-    enableIndexedDbPersistence,
-    initializeFirestore,
-    persistentLocalCache
-} from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js';
-import { 
-    getAuth, 
-    signInWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
-} from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js';
-
+// firebase-config.js - Fixed version
 const firebaseConfig = {
   apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
   authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
@@ -24,44 +10,45 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app;
-let db;
-let auth;
-
 try {
-    app = initializeApp(firebaseConfig);
-    console.log("Firebase initialized successfully");
-    
-    // Initialize Firestore with new persistence method (to avoid the warning)
-    db = initializeFirestore(app, {
-        localCache: persistentLocalCache(/*settings*/)
-    });
-    
-    // Alternative: If you prefer the old method but want to suppress warnings
-    // db = getFirestore(app);
-    // enableIndexedDbPersistence(db).catch(handlePersistenceError);
-    
-    auth = getAuth(app);
-    
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+        console.log("Firebase initialized successfully");
+    } else {
+        firebase.app();
+        console.log("Firebase already initialized");
+    }
 } catch (error) {
     console.error("Firebase initialization error:", error);
 }
 
-// Handle persistence errors
-function handlePersistenceError(err) {
-    console.log("Persistence failed:", err);
-    if (err.code == 'failed-precondition') {
-        console.log('Persistence failed: Multiple tabs open');
-    } else if (err.code == 'unimplemented') {
-        console.log('Persistence not supported in this browser');
-    }
-}
+// Initialize Firestore and Auth
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// Firestore settings
+db.settings({
+    ignoreUndefinedProperties: true
+});
+
+// Enable offline persistence
+db.enablePersistence()
+  .catch((err) => {
+      console.log("Persistence failed:", err);
+      if (err.code == 'failed-precondition') {
+          // Multiple tabs open, persistence can only be enabled in one tab at a time.
+          console.log('Persistence failed: Multiple tabs open');
+      } else if (err.code == 'unimplemented') {
+          // The current browser doesn't support all of the features required
+          console.log('Persistence not supported');
+      }
+  });
 
 // Global auth state variable
 let isAuthenticated = false;
 
-// Authentication state observer
-onAuthStateChanged(auth, (user) => {
+// Authentication state observer - SIMPLIFIED
+auth.onAuthStateChanged((user) => {
     console.log("Auth state changed:", user ? "User logged in" : "User logged out");
     
     if (user) {
@@ -112,6 +99,7 @@ function handleLogout() {
 
 // Show auth modal
 function showAuthModal() {
+    // Wait for DOM to be ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             initializeAuthModal();
@@ -132,6 +120,7 @@ function initializeAuthModal() {
     
     authModal.show();
     
+    // Clear form and focus
     setTimeout(() => {
         const authForm = document.getElementById('authForm');
         if (authForm) authForm.reset();
@@ -145,7 +134,7 @@ function initializeAuthModal() {
 
 // Add logout button
 function addLogoutButton() {
-    removeLogoutButton();
+    removeLogoutButton(); // Remove existing first
     
     const logoutBtn = document.createElement('button');
     logoutBtn.id = 'logoutBtn';
@@ -171,7 +160,7 @@ function removeLogoutButton() {
 async function handleUserLogout() {
     try {
         showLoading('Signing out...');
-        await signOut(auth);
+        await auth.signOut();
         showToast('You have been signed out successfully', 'info');
     } catch (error) {
         console.error("Logout error:", error);
@@ -234,8 +223,10 @@ async function handleAuthSubmit(e) {
         hideAuthError();
         
         console.log("Attempting login...");
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
         console.log("Login successful:", userCredential.user.email);
+        
+        // The auth state observer will handle the rest
         
     } catch (error) {
         console.error("Login error:", error);
@@ -324,11 +315,14 @@ function parseFirebaseDate(dateValue) {
 // Test Firestore connection
 async function testFirebaseConnection() {
     try {
+        // Only test if authenticated
         if (isAuthenticated) {
-            // For v9 modular syntax, you'd use:
-            // import { doc, setDoc } from 'firebase/firestore';
-            // await setDoc(doc(db, 'test', 'connection'), { ... });
-            console.log("Firestore connection available");
+            const testDocRef = db.collection('test').doc('connection');
+            await testDocRef.set({
+                test: true,
+                timestamp: new Date().toISOString()
+            });
+            console.log("Firestore connection test successful");
         }
         return true;
     } catch (error) {
@@ -337,18 +331,8 @@ async function testFirebaseConnection() {
     }
 }
 
-// Make Firebase instances globally available (for compatibility)
-window.firebase = {
-    app,
-    db,
-    auth,
-    firestore: db
-};
-
 // Initialize on load
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM loaded, checking auth state...");
+    // Auth state observer will handle the rest
 });
-
-// Export for use in other modules
-export { app, db, auth, isAuthenticated, checkAuth, parseFirebaseDate };
