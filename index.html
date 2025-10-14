@@ -671,63 +671,6 @@
 
     <!-- ========== MODALS ========== -->
 
-    <!-- Auth Modal -->
-    <div class="modal fade" id="authModal" tabindex="-1" aria-labelledby="authModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="authModalLabel">
-                        <i class="fas fa-lock me-2"></i>Secure Access
-                    </h5>
-                </div>
-                <div class="modal-body">
-                    <div class="text-center mb-4">
-                        <i class="fas fa-laptop-code fa-3x text-primary mb-3"></i>
-                        <h4>MNR SoftTech</h4>
-                        <p class="text-muted">Enter your credentials to continue</p>
-                    </div>
-                    
-                    <form id="authForm">
-                        <div class="mb-3">
-                            <label for="authEmail" class="form-label">Email Address</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                <input type="email" class="form-control" id="authEmail" placeholder="your-email@gmail.com" required>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="authPassword" class="form-label">Password</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-key"></i></span>
-                                <input type="password" class="form-control" id="authPassword" placeholder="Enter password" required>
-                            </div>
-                        </div>
-                        
-                        <div id="authError" class="alert alert-danger d-none">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <span id="authErrorMessage"></span>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary w-100 mb-3" id="authSubmitBtn">
-                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
-                        </button>
-                        
-                        <!-- Demo Credentials Hint -->
-                        <div class="alert alert-info small">
-                            <strong>Demo Access:</strong><br>
-                            Email: admin@mnr.com<br>
-                            Password: admin123
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer justify-content-center">
-                    <small class="text-muted">Secure access for authorized personnel only</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- View Invoice Modal -->
     <div class="modal fade" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
