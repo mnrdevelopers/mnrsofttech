@@ -107,7 +107,7 @@ async function loadDailyInvoices() {
     }
     
     try {
-        showLoading('Loading daily invoices...');
+        showLoading('Loading daily invoices...', 'dots');
         
         const snapshot = await db.collection('invoices')
             .where('customerName', '==', customer)
