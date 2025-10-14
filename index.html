@@ -869,6 +869,93 @@
 
         // Set current year in footer
         document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+    // Auth check for main app
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("Main app loaded, checking authentication...");
+        
+        // Check if user is authenticated
+        if (!isAuthenticated) {
+            console.log("User not authenticated, redirecting to auth page");
+            redirectToAuth();
+            return;
+        }
+        
+        // User is authenticated, show the app
+        console.log("User authenticated, showing app");
+        document.querySelector('main').style.display = 'block';
+        document.querySelector('header').style.display = 'block';
+        document.querySelector('footer').style.display = 'block';
+        
+        // Initialize app functionality
+        initializeApp();
+    });
+
+    function redirectToAuth() {
+        window.location.href = 'auth.html';
+    }
+
+    function initializeApp() {
+        console.log("Initializing app functionality...");
+        
+        // Initialize all your app modules here
+        if (typeof initializeDashboard === 'function') {
+            initializeDashboard();
+        }
+        
+        if (typeof setupInvoicesTab === 'function') {
+            setupInvoicesTab();
+        }
+        
+        if (typeof initializeConsolidationTab === 'function') {
+            initializeConsolidationTab();
+        }
+        
+        if (typeof initializeBulkPayments === 'function') {
+            initializeBulkPayments();
+        }
+        
+        if (typeof initializeCustomersTab === 'function') {
+            initializeCustomersTab();
+        }
+        
+        // Set current year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        
+        // Add logout button
+        addLogoutButton();
+    }
+
+    function addLogoutButton() {
+        // Remove existing logout button first
+        const existingLogoutBtn = document.getElementById('logoutBtn');
+        if (existingLogoutBtn) {
+            existingLogoutBtn.remove();
+        }
+        
+        const logoutBtn = document.createElement('button');
+        logoutBtn.id = 'logoutBtn';
+        logoutBtn.className = 'btn btn-outline-light btn-sm ms-auto';
+        logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt me-1"></i>Logout';
+        logoutBtn.addEventListener('click', handleUserLogout);
+        
+        const logoContainer = document.querySelector('.logo-container');
+        if (logoContainer) {
+            logoContainer.appendChild(logoutBtn);
+        }
+    }
+
+    async function handleUserLogout() {
+        try {
+            showLoading('Signing out...');
+            await auth.signOut();
+            // Auth state observer will handle the redirect
+        } catch (error) {
+            console.error("Logout error:", error);
+            showToast('Error signing out: ' + error.message, 'error');
+            hideLoading();
+        }
+    }
     </script>
 </body>
 </html>
