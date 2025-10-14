@@ -1,4 +1,4 @@
-// customers.js - Customer Management System
+// customers.js - Customer Management System (Fixed Version)
 document.addEventListener('DOMContentLoaded', function() {
     initializeCustomersTab();
 });
@@ -62,7 +62,6 @@ function setupCustomerEventListeners() {
     }
 }
 
-// Rest of your existing functions remain the same...
 async function loadCustomers() {
     try {
         showLoading('Loading customers...');
@@ -249,16 +248,16 @@ async function editCustomer(customerId) {
         
         const customer = doc.data();
         
-        // Populate form
+        // Populate form - NOTE: Using modal-specific IDs
         const modalLabel = document.getElementById('customerModalLabel');
         if (modalLabel) {
             modalLabel.textContent = 'Edit Customer';
         }
         document.getElementById('customerId').value = customerId;
-        document.getElementById('customerName').value = customer.name || '';
-        document.getElementById('customerContact').value = customer.contact || '';
-        document.getElementById('customerEmail').value = customer.email || '';
-        document.getElementById('customerAddress').value = customer.address || '';
+        document.getElementById('modalCustomerName').value = customer.name || '';
+        document.getElementById('modalCustomerContact').value = customer.contact || '';
+        document.getElementById('modalCustomerEmail').value = customer.email || '';
+        document.getElementById('modalCustomerAddress').value = customer.address || '';
         document.getElementById('customerType').value = customer.customerType || 'one-time';
         document.getElementById('customerStatus').value = customer.status || 'active';
         document.getElementById('customerNotes').value = customer.notes || '';
@@ -313,14 +312,15 @@ async function updateCustomer() {
 }
 
 function collectCustomerData() {
+    // Use modal-specific IDs to avoid conflicts
     return {
-        name: document.getElementById('customerName').value.trim(),
-        contact: document.getElementById('customerContact').value.trim(),
-        email: document.getElementById('customerEmail').value.trim(),
-        address: document.getElementById('customerAddress').value.trim(),
-        customerType: document.getElementById('customerType').value,
-        status: document.getElementById('customerStatus').value,
-        notes: document.getElementById('customerNotes').value.trim()
+        name: document.getElementById('modalCustomerName')?.value.trim() || '',
+        contact: document.getElementById('modalCustomerContact')?.value.trim() || '',
+        email: document.getElementById('modalCustomerEmail')?.value.trim() || '',
+        address: document.getElementById('modalCustomerAddress')?.value.trim() || '',
+        customerType: document.getElementById('customerType')?.value || 'one-time',
+        status: document.getElementById('customerStatus')?.value || 'active',
+        notes: document.getElementById('customerNotes')?.value.trim() || ''
     };
 }
 
@@ -372,6 +372,7 @@ function selectCustomerForInvoice(customerId) {
             
             if (doc.exists) {
                 const customer = doc.data();
+                // Use invoice form IDs (without 'modal' prefix)
                 document.getElementById('customerName').value = customer.name || '';
                 document.getElementById('customerContact').value = customer.contact || '';
                 document.getElementById('customerAddress').value = customer.address || '';
@@ -439,19 +440,19 @@ function quickAddCustomer() {
         return;
     }
     
-    // Pre-fill the customer modal
+    // Pre-fill the customer modal - use modal-specific IDs
     const modalLabel = document.getElementById('customerModalLabel');
     if (modalLabel) {
         modalLabel.textContent = 'Add New Customer';
     }
     document.getElementById('customerId').value = '';
-    document.getElementById('customerName').value = name;
-    document.getElementById('customerContact').value = contact;
-    document.getElementById('customerAddress').value = address;
+    document.getElementById('modalCustomerName').value = name;
+    document.getElementById('modalCustomerContact').value = contact;
+    document.getElementById('modalCustomerAddress').value = address;
     document.getElementById('customerStatus').value = 'active';
     
     // Clear other fields
-    document.getElementById('customerEmail').value = '';
+    document.getElementById('modalCustomerEmail').value = '';
     document.getElementById('customerNotes').value = '';
     
     const modal = new bootstrap.Modal(document.getElementById('customerModal'));
