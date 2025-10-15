@@ -2191,3 +2191,43 @@ header {
         padding: 0.5rem 0;
     }
 }
+
+/* Expense Styles */
+.expense-alert-critical {
+    border-left: 4px solid #dc3545 !important;
+}
+
+.expense-alert-warning {
+    border-left: 4px solid #ffc107 !important;
+}
+
+.expense-alert-info {
+    border-left: 4px solid #17a2b8 !important;
+}
+
+.expense-category-loan {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.expense-category-credit-card {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+}
+
+.expense-category-utility {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+}
+
+.expense-category-rent {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+}
+
+/* Expense summary cards */
+.expense-summary-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.expense-summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
