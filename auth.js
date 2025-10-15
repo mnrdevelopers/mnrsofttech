@@ -196,17 +196,14 @@ class AuthSystem {
         const userInfo = document.createElement('div');
         userInfo.className = 'user-info';
         userInfo.innerHTML = `
-            <div class="user-dropdown">
-                <button class="user-btn">
+            <div class="user-display">
+                <span class="user-email">
                     <i class="fas fa-user-circle me-2"></i>
-                    <span id="userEmail">${this.currentUser.email}</span>
-                    <i class="fas fa-chevron-down ms-2"></i>
+                    ${this.currentUser.email}
+                </span>
+                <button id="logoutBtn" class="logout-btn ms-3">
+                    <i class="fas fa-sign-out-alt me-2"></i>Sign Out
                 </button>
-                <div class="user-dropdown-content">
-                    <button id="logoutBtn" class="logout-btn">
-                        <i class="fas fa-sign-out-alt me-2"></i>Sign Out
-                    </button>
-                </div>
             </div>
         `;
         header.appendChild(userInfo);
