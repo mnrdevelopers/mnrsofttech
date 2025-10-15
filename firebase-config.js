@@ -1,4 +1,4 @@
-// firebase-config.js - No Authentication Version
+// firebase-config.js - Enhanced with Authentication
 const firebaseConfig = {
   apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
   authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
@@ -13,98 +13,61 @@ const firebaseConfig = {
 try {
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
-        console.log("Firebase initialized successfully");
-    } else {
-        firebase.app();
-        console.log("Firebase already initialized");
+        console.log("Firebase initialized successfully with authentication");
     }
 } catch (error) {
     console.error("Firebase initialization error:", error);
 }
 
-// Initialize Firestore only (no Auth)
+// Initialize services
 const db = firebase.firestore();
+const auth = firebase.auth();
 
-// Firestore settings
+// Security Rules (to be set in Firebase Console)
+const securityRules = `
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access only to authenticated users
+    match /invoices/{invoice} {
+      allow read, write: if request.auth != null;
+    }
+    match /customers/{customer} {
+      allow read, write: if request.auth != null;
+    }
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+`;
+
+// Firestore settings with enhanced security
 db.settings({
     ignoreUndefinedProperties: true
 });
 
-// Enable offline persistence
-db.enablePersistence()
-  .catch((err) => {
-      console.log("Persistence failed:", err);
-      if (err.code == 'failed-precondition') {
-          console.log('Persistence failed: Multiple tabs open');
-      } else if (err.code == 'unimplemented') {
-          console.log('Persistence not supported');
-      }
-  });
-
-// Initialize app immediately (no auth required)
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM loaded, initializing app...");
-    initializeApp();
+// Authentication state observer
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        console.log("User is signed in:", user.email);
+        initializeApp();
+    } else {
+        console.log("User is signed out");
+        showLoginScreen();
+    }
 });
 
-// Initialize app functionality
+// Initialize app after authentication
 function initializeApp() {
-    console.log("Initializing app...");
+    console.log("Initializing secured application...");
     
     // Initialize all app components
-    if (typeof initializeDashboard === 'function') {
-        initializeDashboard();
-    }
+    if (typeof initializeDashboard === 'function') initializeDashboard();
+    if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
+    if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
+    if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
+    if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
     
-    if (typeof setupInvoicesTab === 'function') {
-        setupInvoicesTab();
-    }
-    
-    if (typeof initializeConsolidationTab === 'function') {
-        initializeConsolidationTab();
-    }
-    
-    if (typeof initializeBulkPayments === 'function') {
-        initializeBulkPayments();
-    }
-    
-    if (typeof initializeCustomersTab === 'function') {
-        initializeCustomersTab();
-    }
-    
-    // Show success message
-    setTimeout(() => {
-        showToast('Application loaded successfully!', 'success');
-    }, 1000);
-}
-
-// Utility function to parse Firebase dates safely
-function parseFirebaseDate(dateValue) {
-    if (!dateValue) return new Date();
-    
-    if (dateValue.toDate && typeof dateValue.toDate === 'function') {
-        return dateValue.toDate();
-    } else if (typeof dateValue === 'string') {
-        return new Date(dateValue);
-    } else if (dateValue instanceof Date) {
-        return dateValue;
-    } else {
-        return new Date();
-    }
-}
-
-// Test Firestore connection
-async function testFirebaseConnection() {
-    try {
-        const testDocRef = db.collection('test').doc('connection');
-        await testDocRef.set({
-            test: true,
-            timestamp: new Date().toISOString()
-        });
-        console.log("Firestore connection test successful");
-        return true;
-    } catch (error) {
-        console.error("Firestore connection test failed:", error);
-        return false;
-    }
+    showToast('Application loaded securely!', 'success');
 }
