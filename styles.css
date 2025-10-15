@@ -2311,3 +2311,90 @@ header {
         font-size: 0.7rem;
     }
 }
+
+/* Fix for table height and display issues */
+.table-responsive {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Remove height restrictions from specific tables */
+#expensesTableBody,
+#dailyInvoicesBody,
+#bulkPaymentBody {
+    max-height: none !important;
+}
+
+/* Fix for table container heights */
+.card-body .table-responsive {
+    max-height: none;
+    overflow: visible;
+}
+
+/* Ensure tables display all rows */
+.table tbody {
+    display: table-row-group;
+}
+
+.table tbody tr {
+    display: table-row;
+}
+
+/* Fix for consolidation table */
+#dailyInvoicesTable {
+    margin-bottom: 1rem;
+}
+
+#dailyInvoicesTable tbody {
+    display: table-row-group;
+}
+
+/* Remove any max-height restrictions from table containers */
+#consolidationResults .table-responsive,
+#bulkPaymentSection .table-responsive {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Ensure proper table rendering */
+.table {
+    table-layout: auto;
+    width: 100%;
+}
+
+.table th,
+.table td {
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+/* Fix for mobile table display */
+@media (max-width: 768px) {
+    .table-responsive {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+    }
+    
+    .table {
+        min-width: 100%;
+        margin-bottom: 0;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Remove any problematic sticky headers that might be causing issues */
+.table-responsive thead {
+    position: static !important;
+}
+
+/* Ensure table rows are properly visible */
+.table tbody tr {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: table-row !important;
+}
