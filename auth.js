@@ -12,16 +12,22 @@ class AuthSystem {
 
     setupEventListeners() {
         // Login form
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleLogin();
-        });
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogin();
+            });
+        }
 
-        // Register form
-        document.getElementById('registerForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleRegister();
-        });
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleRegister();
+            });
+        }
 
         // Logout button (will be added dynamically)
         document.addEventListener('click', (e) => {
@@ -35,10 +41,21 @@ class AuthSystem {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
 
+        if (!email || !password) {
+            showToast('Please fill in all fields', 'error');
+            return;
+        }
+
         try {
             showLoading('Signing in...');
             const userCredential = await auth.signInWithEmailAndPassword(email, password);
             this.currentUser = userCredential.user;
+            
+            // Update user's last login
+            await db.collection('users').doc(this.currentUser.uid).set({
+                lastLogin: new Date().toISOString()
+            }, { merge: true });
+            
             this.hideAuthScreen();
             showToast('Successfully signed in!', 'success');
         } catch (error) {
@@ -54,6 +71,11 @@ class AuthSystem {
         const email = document.getElementById('registerEmail').value;
         const password = document.getElementById('registerPassword').value;
         const confirmPassword = document.getElementById('registerConfirmPassword').value;
+
+        if (!name || !email || !password || !confirmPassword) {
+            showToast('Please fill in all fields', 'error');
+            return;
+        }
 
         if (password !== confirmPassword) {
             showToast('Passwords do not match', 'error');
@@ -136,41 +158,58 @@ class AuthSystem {
     }
 
     showAuthScreen() {
-        document.getElementById('authScreen').style.display = 'flex';
-        document.querySelector('main').style.display = 'none';
-        document.querySelector('header').style.display = 'none';
-        document.querySelector('footer').style.display = 'none';
+        const authScreen = document.getElementById('authScreen');
+        const main = document.querySelector('main');
+        const header = document.querySelector('header');
+        const footer = document.querySelector('footer');
+        
+        if (authScreen) authScreen.style.display = 'flex';
+        if (main) main.style.display = 'none';
+        if (header) header.style.display = 'none';
+        if (footer) footer.style.display = 'none';
     }
 
     hideAuthScreen() {
-        document.getElementById('authScreen').style.display = 'none';
-        document.querySelector('main').style.display = 'block';
-        document.querySelector('header').style.display = 'block';
-        document.querySelector('footer').style.display = 'block';
+        const authScreen = document.getElementById('authScreen');
+        const main = document.querySelector('main');
+        const header = document.querySelector('header');
+        const footer = document.querySelector('footer');
+        
+        if (authScreen) authScreen.style.display = 'none';
+        if (main) main.style.display = 'block';
+        if (header) header.style.display = 'block';
+        if (footer) footer.style.display = 'block';
+        
         this.addUserInfoToHeader();
     }
 
     addUserInfoToHeader() {
         const header = document.querySelector('header .logo-container');
-        if (!header.querySelector('.user-info')) {
-            const userInfo = document.createElement('div');
-            userInfo.className = 'user-info';
-            userInfo.innerHTML = `
-                <div class="user-dropdown">
-                    <button class="user-btn">
-                        <i class="fas fa-user-circle me-2"></i>
-                        <span id="userEmail">${this.currentUser.email}</span>
-                        <i class="fas fa-chevron-down ms-2"></i>
-                    </button>
-                    <div class="user-dropdown-content">
-                        <button id="logoutBtn" class="logout-btn">
-                            <i class="fas fa-sign-out-alt me-2"></i>Sign Out
-                        </button>
-                    </div>
-                </div>
-            `;
-            header.appendChild(userInfo);
+        if (!header) return;
+        
+        // Remove existing user info if any
+        const existingUserInfo = header.querySelector('.user-info');
+        if (existingUserInfo) {
+            existingUserInfo.remove();
         }
+
+        const userInfo = document.createElement('div');
+        userInfo.className = 'user-info';
+        userInfo.innerHTML = `
+            <div class="user-dropdown">
+                <button class="user-btn">
+                    <i class="fas fa-user-circle me-2"></i>
+                    <span id="userEmail">${this.currentUser.email}</span>
+                    <i class="fas fa-chevron-down ms-2"></i>
+                </button>
+                <div class="user-dropdown-content">
+                    <button id="logoutBtn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt me-2"></i>Sign Out
+                    </button>
+                </div>
+            </div>
+        `;
+        header.appendChild(userInfo);
     }
 
     checkAuthState() {
@@ -179,6 +218,16 @@ class AuthSystem {
                 this.currentUser = user;
                 this.hideAuthScreen();
                 console.log('User authenticated:', user.email);
+                
+                // Initialize app components after auth
+                setTimeout(() => {
+                    if (typeof initializeDashboard === 'function') initializeDashboard();
+                    if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
+                    if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
+                    if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
+                    if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
+                }, 1000);
+                
             } else {
                 this.showAuthScreen();
             }
@@ -193,7 +242,6 @@ class AuthSystem {
 
         try {
             let result;
-            const userDocRef = db.collection('users').doc(this.currentUser.uid);
             
             switch (operation) {
                 case 'create':
@@ -217,9 +265,25 @@ class AuthSystem {
                     break;
                     
                 case 'get':
-                    result = docId ? 
-                        await db.collection(collection).doc(docId).get() :
-                        await db.collection(collection).where('createdBy', '==', this.currentUser.uid).get();
+                    if (docId) {
+                        result = await db.collection(collection).doc(docId).get();
+                        // Check if user owns this document
+                        if (result.exists && result.data().createdBy !== this.currentUser.uid) {
+                            throw new Error('Access denied');
+                        }
+                    } else {
+                        result = await db.collection(collection)
+                            .where('createdBy', '==', this.currentUser.uid)
+                            .get();
+                    }
+                    break;
+                    
+                case 'set':
+                    result = await db.collection(collection).doc(docId).set({
+                        ...data,
+                        createdBy: this.currentUser.uid,
+                        createdAt: new Date().toISOString()
+                    });
                     break;
             }
             
@@ -234,10 +298,6 @@ class AuthSystem {
 // Initialize authentication system
 let authSystem;
 
-document.addEventListener('DOMContentLoaded', function() {
-    authSystem = new AuthSystem();
-});
-
 // Tab switching function
 function showTab(tabName) {
     // Hide all tabs
@@ -249,6 +309,50 @@ function showTab(tabName) {
     });
     
     // Show selected tab
-    document.getElementById(tabName + 'Tab').classList.add('active');
-    event.target.classList.add('active');
+    const targetTab = document.getElementById(tabName + 'Tab');
+    const targetButton = event.target;
+    
+    if (targetTab) targetTab.classList.add('active');
+    if (targetButton) targetButton.classList.add('active');
 }
+
+// Global secureDB object for other scripts to use
+const secureDB = {
+    async add(collection, data) {
+        return await authSystem.secureDBOperation('create', collection, data);
+    },
+    
+    async set(collection, docId, data) {
+        return await authSystem.secureDBOperation('set', collection, data, docId);
+    },
+    
+    async update(collection, docId, data) {
+        return await authSystem.secureDBOperation('update', collection, data, docId);
+    },
+    
+    async delete(collection, docId) {
+        return await authSystem.secureDBOperation('delete', collection, null, docId);
+    },
+    
+    async get(collection, docId = null) {
+        return await authSystem.secureDBOperation('get', collection, null, docId);
+    },
+    
+    async query(collection, conditions = []) {
+        if (!authSystem.currentUser) throw new Error('Not authenticated');
+        
+        let query = db.collection(collection).where('createdBy', '==', authSystem.currentUser.uid);
+        
+        // Add additional conditions
+        conditions.forEach(condition => {
+            query = query.where(condition.field, condition.operator, condition.value);
+        });
+        
+        return await query.get();
+    }
+};
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    authSystem = new AuthSystem();
+});
