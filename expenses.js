@@ -503,19 +503,36 @@ async function saveExpense() {
             expenseId = newDocRef.id;
         }
         
-        // Close modal
+        // Close modal properly
         const modalElement = document.getElementById('expenseModal');
         if (modalElement) {
             const modal = bootstrap.Modal.getInstance(modalElement);
             if (modal) {
                 modal.hide();
+                
+                // Clean up modal backdrop and restore scroll
+                setTimeout(() => {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => {
+                        backdrop.remove();
+                    });
+                    
+                    // Restore body scroll
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                    
+                    // Remove modal-open class
+                    document.body.classList.remove('modal-open');
+                }, 300);
             }
         }
         
         showToast(`Expense ${isEditing ? 'updated' : 'saved'} successfully!`, 'success');
         
-        // Refresh expenses list
-        loadExpenses();
+        // Refresh expenses list with a small delay to ensure DOM is ready
+        setTimeout(() => {
+            loadExpenses();
+        }, 500);
         
     } catch (error) {
         console.error('Error saving expense:', error);
