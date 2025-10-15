@@ -590,59 +590,198 @@ async function editExpense(expenseId) {
 }
 
 function viewLoanDetails(expenseId) {
-    const expense = currentExpenses.find(exp => exp.id === expenseId);
-    if (!expense || expense.category !== 'loan' || !expense.loanDetails) {
-        showToast('No loan details available for this expense', 'info');
-        return;
-    }
+    // Use requestAnimationFrame for better performance
+    requestAnimationFrame(() => {
+        const expense = currentExpenses.find(exp => exp.id === expenseId);
+        if (!expense || expense.category !== 'loan' || !expense.loanDetails) {
+            showToast('No loan details available for this expense', 'info');
+            return;
+        }
+        
+        const loan = expense.loanDetails;
+        
+        // Create modal HTML with minimal DOM manipulation
+        const modalHTML = `
+            <div class="modal fade" id="loanDetailsModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Loan Details - ${escapeHtml(expense.description)}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-primary text-white">
+                                            <h6 class="mb-0">Loan Information</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <table class="table table-sm table-borderless">
+                                                <tr>
+                                                    <td><strong>Total Amount:</strong></td>
+                                                    <td>₹${(loan.totalAmount || 0).toFixed(2)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Tenure:</strong></td>
+                                                    <td>${loan.tenure || 0} months</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Interest Rate:</strong></td>
+                                                    <td>${loan.interestRate || 0}% p.a.</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Provider:</strong></td>
+                                                    <td>${loan.loanProvider || 'N/A'}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header bg-success text-white">
+                                            <h6 class="mb-0">Payment Details</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <table class="table table-sm table-borderless">
+                                                <tr>
+                                                    <td><strong>EMI Amount:</strong></td>
+                                                    <td>₹${(loan.emiAmount || 0).toFixed(2)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Remaining:</strong></td>
+                                                    <td>₹${(loan.remainingAmount || 0).toFixed(2)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Paid:</strong></td>
+                                                    <td>₹${((loan.totalAmount || 0) - (loan.remainingAmount || 0)).toFixed(2)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Progress:</strong></td>
+                                                    <td>
+                                                        <div class="progress" style="height: 8px;">
+                                                            <div class="progress-bar bg-success" 
+                                                                 style="width: ${((((loan.totalAmount || 0) - (loan.remainingAmount || 0)) / (loan.totalAmount || 1)) * 100).toFixed(1)}%">
+                                                            </div>
+                                                        </div>
+                                                        <small class="text-muted">
+                                                            ${((((loan.totalAmount || 0) - (loan.remainingAmount || 0)) / (loan.totalAmount || 1)) * 100).toFixed(1)}% Paid
+                                                        </small>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header bg-info text-white">
+                                            <h6 class="mb-0">Loan Period</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <table class="table table-sm table-borderless">
+                                                <tr>
+                                                    <td><strong>Start Date:</strong></td>
+                                                    <td>${loan.loanStartDate ? new Date(loan.loanStartDate).toLocaleDateString('en-IN') : 'N/A'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>End Date:</strong></td>
+                                                    <td>${loan.loanEndDate ? new Date(loan.loanEndDate).toLocaleDateString('en-IN') : 'N/A'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Months Left:</strong></td>
+                                                    <td>
+                                                        ${calculateMonthsLeft(loan.loanEndDate)} months
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header bg-warning text-dark">
+                                            <h6 class="mb-0">Interest Calculation</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <table class="table table-sm table-borderless">
+                                                <tr>
+                                                    <td><strong>Monthly Interest:</strong></td>
+                                                    <td>₹${((loan.totalAmount || 0) * (loan.interestRate || 0) / 1200).toFixed(2)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Total Interest:</strong></td>
+                                                    <td>₹${((loan.emiAmount || 0) * (loan.tenure || 0) - (loan.totalAmount || 0)).toFixed(2)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Total Payable:</strong></td>
+                                                    <td>₹${((loan.emiAmount || 0) * (loan.tenure || 0)).toFixed(2)}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" onclick="editExpense('${expenseId}')">
+                                <i class="fas fa-edit me-1"></i>Edit Loan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('loanDetailsModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to DOM
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Initialize and show modal
+        const modalElement = document.getElementById('loanDetailsModal');
+        const modal = new bootstrap.Modal(modalElement);
+        
+        // Clean up modal when hidden
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            setTimeout(() => {
+                if (modalElement.parentNode) {
+                    modalElement.remove();
+                }
+            }, 300);
+        });
+        
+        modal.show();
+    });
+}
+
+// Helper function to calculate months left
+function calculateMonthsLeft(endDate) {
+    if (!endDate) return 'N/A';
     
-    const loan = expense.loanDetails;
-    const loanDetailsHTML = `
-        <div class="loan-details-modal">
-            <h5>Loan Details</h5>
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Total Loan Amount:</strong> ₹${loan.totalAmount?.toFixed(2) || '0.00'}</p>
-                    <p><strong>Tenure:</strong> ${loan.tenure || 0} months</p>
-                    <p><strong>Interest Rate:</strong> ${loan.interestRate || 0}% p.a.</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>EMI Amount:</strong> ₹${loan.emiAmount?.toFixed(2) || '0.00'}</p>
-                    <p><strong>Remaining Amount:</strong> ₹${loan.remainingAmount?.toFixed(2) || '0.00'}</p>
-                    <p><strong>Provider:</strong> ${loan.loanProvider || 'N/A'}</p>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Start Date:</strong> ${loan.loanStartDate ? new Date(loan.loanStartDate).toLocaleDateString('en-IN') : 'N/A'}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>End Date:</strong> ${loan.loanEndDate ? new Date(loan.loanEndDate).toLocaleDateString('en-IN') : 'N/A'}</p>
-                </div>
-            </div>
-        </div>
-    `;
+    const today = new Date();
+    const end = new Date(endDate);
+    const monthsLeft = Math.ceil((end - today) / (1000 * 60 * 60 * 24 * 30));
     
-    // You can show this in a modal or alert
-    const modal = new bootstrap.Modal(document.createElement('div'));
-    modal._element.innerHTML = `
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Loan Details - ${expense.description}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    ${loanDetailsHTML}
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal._element);
-    modal.show();
+    return monthsLeft > 0 ? monthsLeft : 0;
+}
+
+// Helper function to escape HTML (security)
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 async function markAsPaid(expenseId) {
