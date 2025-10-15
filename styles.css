@@ -1879,3 +1879,232 @@ footer p {
         display: none;
     }
 }
+
+/* Add these styles to your existing CSS file */
+
+/* User Info and Logout Button Styles */
+.user-info {
+    margin-left: auto;
+    margin-right: 2rem;
+    display: flex;
+    align-items: center;
+}
+
+.user-display {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.user-email {
+    color: white;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.user-email i {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.logout-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    min-height: auto;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.logout-btn:active {
+    transform: translateY(0);
+}
+
+.logout-btn i {
+    font-size: 0.9rem;
+}
+
+/* Mobile Responsive for User Info */
+@media (max-width: 768px) {
+    .user-info {
+        margin-right: 1rem;
+    }
+    
+    .user-display {
+        gap: 0.5rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .user-email span {
+        display: none; /* Hide email text on mobile */
+    }
+    
+    .user-email i {
+        margin-right: 0;
+    }
+    
+    .logout-btn span {
+        display: none; /* Hide "Sign Out" text on mobile */
+    }
+    
+    .logout-btn {
+        padding: 0.5rem;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        justify-content: center;
+    }
+    
+    .logout-btn i {
+        margin: 0;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 576px) {
+    .user-info {
+        margin-right: 0.5rem;
+    }
+    
+    .user-display {
+        padding: 0.3rem 0.6rem;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .user-info {
+        margin-right: 1.5rem;
+    }
+    
+    .user-email span {
+        font-size: 0.85rem;
+    }
+    
+    .logout-btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+}
+
+/* Animation for user info appearance */
+@keyframes slideInUser {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.user-info {
+    animation: slideInUser 0.5s ease-out;
+}
+
+/* Enhanced focus states for accessibility */
+.logout-btn:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* Loading state for logout button */
+.logout-btn.loading {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+}
+
+.logout-btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Print styles - hide user info when printing */
+@media print {
+    .user-info {
+        display: none !important;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .user-display {
+        background: rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .logout-btn {
+        background: rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .logout-btn:hover {
+        background: rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .user-display {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: white;
+    }
+    
+    .user-email {
+        color: black;
+    }
+    
+    .logout-btn {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: white;
+        color: black;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .user-info {
+        animation: none;
+    }
+    
+    .logout-btn {
+        transition: none;
+    }
+    
+    .logout-btn:hover {
+        transform: none;
+    }
+}
