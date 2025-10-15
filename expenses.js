@@ -1,4 +1,4 @@
-// expenses.js - Expense Management System
+// expenses.js - Enhanced Expense Management System with Loan/EMI Features
 let expensesInitialized = false;
 let currentExpenses = [];
 
@@ -79,10 +79,81 @@ function setupExpenseEventListeners() {
         });
     }
 
+    // Loan calculation fields
+    const totalLoanAmount = document.getElementById('totalLoanAmount');
+    const loanTenure = document.getElementById('loanTenure');
+    const interestRate = document.getElementById('interestRate');
+    
+    if (totalLoanAmount) totalLoanAmount.addEventListener('input', calculateEMI);
+    if (loanTenure) loanTenure.addEventListener('input', calculateEMI);
+    if (interestRate) interestRate.addEventListener('input', calculateEMI);
+
     // Set default due date to today
     const dueDateInput = document.getElementById('expenseDueDate');
     if (dueDateInput) {
         dueDateInput.value = new Date().toISOString().split('T')[0];
+    }
+}
+
+function toggleLoanFields() {
+    const category = document.getElementById('expenseCategory').value;
+    const loanFields = document.getElementById('loanFields');
+    
+    if (category === 'loan') {
+        loanFields.style.display = 'block';
+        // Auto-fill amount with EMI amount if calculated
+        const emiAmount = document.getElementById('emiAmount').value;
+        if (emiAmount && emiAmount > 0) {
+            document.getElementById('expenseAmount').value = emiAmount;
+        }
+    } else {
+        loanFields.style.display = 'none';
+        // Clear loan fields
+        document.getElementById('totalLoanAmount').value = '';
+        document.getElementById('loanTenure').value = '';
+        document.getElementById('interestRate').value = '0';
+        document.getElementById('emiAmount').value = '';
+        document.getElementById('remainingAmount').value = '';
+        document.getElementById('loanStartDate').value = '';
+        document.getElementById('loanEndDate').value = '';
+        document.getElementById('loanProvider').value = '';
+    }
+}
+
+function calculateEMI() {
+    const principal = parseFloat(document.getElementById('totalLoanAmount').value) || 0;
+    const tenure = parseInt(document.getElementById('loanTenure').value) || 0;
+    const rate = parseFloat(document.getElementById('interestRate').value) || 0;
+    
+    if (principal > 0 && tenure > 0) {
+        // Convert annual rate to monthly and decimal
+        const monthlyRate = rate / 12 / 100;
+        
+        // EMI formula: P * r * (1+r)^n / ((1+r)^n - 1)
+        const emi = principal * monthlyRate * Math.pow(1 + monthlyRate, tenure) / 
+                   (Math.pow(1 + monthlyRate, tenure) - 1);
+        
+        document.getElementById('emiAmount').value = emi.toFixed(2);
+        document.getElementById('remainingAmount').value = principal.toFixed(2);
+        
+        // Auto-fill expense amount with EMI
+        document.getElementById('expenseAmount').value = emi.toFixed(2);
+        
+        // Calculate and set loan end date
+        calculateLoanEndDate();
+    }
+}
+
+function calculateLoanEndDate() {
+    const startDate = document.getElementById('loanStartDate').value;
+    const tenure = parseInt(document.getElementById('loanTenure').value) || 0;
+    
+    if (startDate && tenure > 0) {
+        const start = new Date(startDate);
+        const end = new Date(start);
+        end.setMonth(start.getMonth() + tenure);
+        
+        document.getElementById('loanEndDate').value = end.toISOString().split('T')[0];
     }
 }
 
@@ -114,7 +185,7 @@ async function loadExpenses() {
         if (tbody) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center py-4 text-danger">
+                    <td colspan="9" class="text-center py-4 text-danger">
                         <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
                         <p>Failed to load expenses</p>
                         <small class="text-muted">${error.message}</small>
@@ -140,7 +211,7 @@ function displayExpenses(expenses) {
     if (expenses.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-4">
+                <td colspan="9" class="text-center py-4">
                     <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
                     <p class="text-muted">No expenses found</p>
                     <button class="btn btn-primary mt-2" onclick="showAddExpenseModal()">
@@ -170,10 +241,26 @@ function displayExpenses(expenses) {
                 statusBadge = '<span class="badge bg-secondary">Pending</span>';
             }
             
+            // Loan details display
+            let loanDetails = '-';
+            if (expense.category === 'loan' && expense.loanDetails) {
+                const loan = expense.loanDetails;
+                loanDetails = `
+                    <div class="loan-details">
+                        <small>
+                            <strong>Total: ₹${loan.totalAmount?.toFixed(2) || '0.00'}</strong><br>
+                            <span class="text-muted">EMI: ₹${loan.emiAmount?.toFixed(2) || '0.00'}</span><br>
+                            <span class="text-muted">Remaining: ₹${loan.remainingAmount?.toFixed(2) || '0.00'}</span>
+                        </small>
+                    </div>
+                `;
+            }
+            
             return `
                 <tr class="${rowClass}">
                     <td>
                         <strong>${expense.description}</strong>
+                        ${expense.loanDetails?.loanProvider ? `<br><small class="text-muted">${expense.loanDetails.loanProvider}</small>` : ''}
                         ${expense.notes ? `<br><small class="text-muted">${expense.notes}</small>` : ''}
                     </td>
                     <td>
@@ -195,6 +282,7 @@ function displayExpenses(expenses) {
                             ${getRecurringLabel(expense.recurring)}
                         </span>
                     </td>
+                    <td>${loanDetails}</td>
                     <td>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-success" onclick="markAsPaid('${expense.id}')" title="Mark as Paid">
@@ -202,6 +290,9 @@ function displayExpenses(expenses) {
                             </button>
                             <button class="btn btn-outline-warning" onclick="editExpense('${expense.id}')" title="Edit">
                                 <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-info" onclick="viewLoanDetails('${expense.id}')" title="Loan Details">
+                                <i class="fas fa-info-circle"></i>
                             </button>
                             <button class="btn btn-outline-danger" onclick="deleteExpense('${expense.id}')" title="Delete">
                                 <i class="fas fa-trash"></i>
@@ -245,6 +336,7 @@ function updateExpenseSummary() {
     let dueSoonCount = 0;
     let creditCardTotal = 0;
     let loanTotal = 0;
+    let totalLoanEMI = 0;
     
     const today = new Date();
     const nextWeek = new Date(today);
@@ -271,13 +363,17 @@ function updateExpenseSummary() {
         // Loan total
         if (expense.category === 'loan') {
             loanTotal += expense.amount;
+            // Sum up all loan EMI amounts
+            if (expense.loanDetails?.emiAmount) {
+                totalLoanEMI += expense.loanDetails.emiAmount;
+            }
         }
     });
     
     document.getElementById('monthlyExpenses').textContent = `₹${monthlyExpenses.toFixed(2)}`;
     document.getElementById('dueSoonCount').textContent = dueSoonCount;
     document.getElementById('creditCardTotal').textContent = `₹${creditCardTotal.toFixed(2)}`;
-    document.getElementById('loanTotal').textContent = `₹${loanTotal.toFixed(2)}`;
+    document.getElementById('loanTotal').textContent = `₹${totalLoanEMI.toFixed(2)}`;
 }
 
 function checkUpcomingExpenses() {
@@ -303,6 +399,7 @@ function checkUpcomingExpenses() {
                 <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
                     <div>
                         <strong>${expense.description}</strong>
+                        ${expense.category === 'loan' && expense.loanDetails ? `<br><small class="text-muted">EMI Payment - ${expense.loanDetails.loanProvider || ''}</small>` : ''}
                         <br>
                         <small class="text-muted">Due: ${dueDate.toLocaleDateString('en-IN')} (${daysUntilDue} days)</small>
                     </div>
@@ -331,6 +428,7 @@ function showAddExpenseModal() {
     document.getElementById('expenseDueDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('expenseRecurring').value = 'none';
     document.getElementById('alertSettings').style.display = 'none';
+    document.getElementById('loanFields').style.display = 'none';
     
     const modalElement = document.getElementById('expenseModal');
     if (modalElement) {
@@ -360,7 +458,7 @@ async function saveExpense() {
     try {
         showLoading('Saving expense...');
         
-        let expenseId = document.getElementById('expenseId').value; // FIX: Changed from const to let
+        let expenseId = document.getElementById('expenseId').value;
         const isEditing = !!expenseId;
         
         const expenseToSave = {
@@ -370,11 +468,25 @@ async function saveExpense() {
             updatedAt: new Date().toISOString()
         };
         
+        // Add loan details if category is loan
+        if (expenseData.category === 'loan') {
+            expenseToSave.loanDetails = {
+                totalAmount: parseFloat(document.getElementById('totalLoanAmount').value) || 0,
+                tenure: parseInt(document.getElementById('loanTenure').value) || 0,
+                interestRate: parseFloat(document.getElementById('interestRate').value) || 0,
+                emiAmount: parseFloat(document.getElementById('emiAmount').value) || 0,
+                remainingAmount: parseFloat(document.getElementById('remainingAmount').value) || 0,
+                loanStartDate: document.getElementById('loanStartDate').value || '',
+                loanEndDate: document.getElementById('loanEndDate').value || '',
+                loanProvider: document.getElementById('loanProvider').value || ''
+            };
+        }
+        
         if (isEditing) {
             await db.collection('expenses').doc(expenseId).update(expenseToSave);
         } else {
             const newDocRef = await db.collection('expenses').add(expenseToSave);
-            expenseId = newDocRef.id; // This was causing the error with const
+            expenseId = newDocRef.id;
         }
         
         // Close modal
@@ -448,6 +560,21 @@ async function editExpense(expenseId) {
         document.getElementById('alertSettings').style.display = 
             document.getElementById('expenseAlert').checked ? 'block' : 'none';
         
+        // Load loan details if available
+        if (expense.category === 'loan' && expense.loanDetails) {
+            document.getElementById('totalLoanAmount').value = expense.loanDetails.totalAmount || '';
+            document.getElementById('loanTenure').value = expense.loanDetails.tenure || '';
+            document.getElementById('interestRate').value = expense.loanDetails.interestRate || '0';
+            document.getElementById('emiAmount').value = expense.loanDetails.emiAmount || '';
+            document.getElementById('remainingAmount').value = expense.loanDetails.remainingAmount || '';
+            document.getElementById('loanStartDate').value = expense.loanDetails.loanStartDate || '';
+            document.getElementById('loanEndDate').value = expense.loanDetails.loanEndDate || '';
+            document.getElementById('loanProvider').value = expense.loanDetails.loanProvider || '';
+            document.getElementById('loanFields').style.display = 'block';
+        } else {
+            document.getElementById('loanFields').style.display = 'none';
+        }
+        
         const modalElement = document.getElementById('expenseModal');
         if (modalElement) {
             const modal = new bootstrap.Modal(modalElement);
@@ -462,15 +589,84 @@ async function editExpense(expenseId) {
     }
 }
 
+function viewLoanDetails(expenseId) {
+    const expense = currentExpenses.find(exp => exp.id === expenseId);
+    if (!expense || expense.category !== 'loan' || !expense.loanDetails) {
+        showToast('No loan details available for this expense', 'info');
+        return;
+    }
+    
+    const loan = expense.loanDetails;
+    const loanDetailsHTML = `
+        <div class="loan-details-modal">
+            <h5>Loan Details</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Total Loan Amount:</strong> ₹${loan.totalAmount?.toFixed(2) || '0.00'}</p>
+                    <p><strong>Tenure:</strong> ${loan.tenure || 0} months</p>
+                    <p><strong>Interest Rate:</strong> ${loan.interestRate || 0}% p.a.</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>EMI Amount:</strong> ₹${loan.emiAmount?.toFixed(2) || '0.00'}</p>
+                    <p><strong>Remaining Amount:</strong> ₹${loan.remainingAmount?.toFixed(2) || '0.00'}</p>
+                    <p><strong>Provider:</strong> ${loan.loanProvider || 'N/A'}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Start Date:</strong> ${loan.loanStartDate ? new Date(loan.loanStartDate).toLocaleDateString('en-IN') : 'N/A'}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>End Date:</strong> ${loan.loanEndDate ? new Date(loan.loanEndDate).toLocaleDateString('en-IN') : 'N/A'}</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // You can show this in a modal or alert
+    const modal = new bootstrap.Modal(document.createElement('div'));
+    modal._element.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Loan Details - ${expense.description}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    ${loanDetailsHTML}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal._element);
+    modal.show();
+}
+
 async function markAsPaid(expenseId) {
     try {
         showLoading('Updating expense...');
         
-        await db.collection('expenses').doc(expenseId).update({
+        const expense = currentExpenses.find(exp => exp.id === expenseId);
+        
+        const updateData = {
             status: 'paid',
             paidDate: new Date().toISOString(),
             updatedAt: new Date().toISOString()
-        });
+        };
+        
+        // Update remaining loan amount if it's a loan
+        if (expense.category === 'loan' && expense.loanDetails) {
+            const remainingAmount = (expense.loanDetails.remainingAmount || 0) - expense.amount;
+            updateData.loanDetails = {
+                ...expense.loanDetails,
+                remainingAmount: Math.max(0, remainingAmount)
+            };
+        }
+        
+        await db.collection('expenses').doc(expenseId).update(updateData);
         
         showToast('Expense marked as paid!', 'success');
         
