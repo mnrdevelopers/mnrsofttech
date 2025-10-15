@@ -23,51 +23,15 @@ try {
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Security Rules (to be set in Firebase Console)
-const securityRules = `
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Allow read/write access only to authenticated users
-    match /invoices/{invoice} {
-      allow read, write: if request.auth != null;
-    }
-    match /customers/{customer} {
-      allow read, write: if request.auth != null;
-    }
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-`;
-
-// Firestore settings with enhanced security
+// Firestore settings
 db.settings({
     ignoreUndefinedProperties: true
 });
 
-// Authentication state observer
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        console.log("User is signed in:", user.email);
-        initializeApp();
-    } else {
-        console.log("User is signed out");
-        showLoginScreen();
-    }
-});
+// Enable offline persistence (optional)
+db.enablePersistence()
+  .catch((err) => {
+      console.log("Persistence failed:", err);
+  });
 
-// Initialize app after authentication
-function initializeApp() {
-    console.log("Initializing secured application...");
-    
-    // Initialize all app components
-    if (typeof initializeDashboard === 'function') initializeDashboard();
-    if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
-    if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
-    if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
-    if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
-    
-    showToast('Application loaded securely!', 'success');
-}
+console.log("Firebase services initialized");
