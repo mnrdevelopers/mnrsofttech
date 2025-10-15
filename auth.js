@@ -176,23 +176,24 @@ class AuthSystem {
         });
     }
 
-    initializeAppComponents() {
-        // Initialize app components only when authenticated
-        setTimeout(() => {
-            if (typeof initializeDashboard === 'function') {
-                try {
-                    initializeDashboard();
-                } catch (error) {
-                    console.error('Dashboard initialization error:', error);
-                    // Don't show toast here as it might interfere with auth flow
-                }
-            }
-            if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
-            if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
-            if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
-            if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
-        }, 1000);
-    }
+   initializeAppComponents() {
+    // Initialize app components only when authenticated
+    setTimeout(() => {
+        console.log('Initializing app components for authenticated user');
+        
+        if (typeof initializeDashboard === 'function') {
+            console.log('Calling initializeDashboard...');
+            initializeDashboard();
+        } else {
+            console.error('initializeDashboard function not found');
+        }
+        
+        if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
+        if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
+        if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
+        if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
+    }, 1000);
+}
 
     // Secure database operations
     async secureDBOperation(operation, collection, data = null, docId = null) {
