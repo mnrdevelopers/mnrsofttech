@@ -220,89 +220,103 @@ function displayExpenses(expenses) {
                 </td>
             </tr>
         `;
-    } else {
-        tbody.innerHTML = expenses.map(expense => {
-            const dueDate = new Date(expense.dueDate);
-            const today = new Date();
-            const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-            
-            let statusBadge = '';
-            let rowClass = '';
-            
-            if (expense.status === 'paid') {
-                statusBadge = '<span class="badge bg-success">Paid</span>';
-            } else if (dueDate < today) {
-                statusBadge = '<span class="badge bg-danger">Overdue</span>';
-                rowClass = 'table-danger';
-            } else if (daysUntilDue <= 3) {
-                statusBadge = '<span class="badge bg-warning">Due Soon</span>';
-                rowClass = 'table-warning';
-            } else {
-                statusBadge = '<span class="badge bg-secondary">Pending</span>';
-            }
-            
-            // Loan details display
-            let loanDetails = '-';
-            if (expense.category === 'loan' && expense.loanDetails) {
-                const loan = expense.loanDetails;
-                loanDetails = `
-                    <div class="loan-details">
-                        <small>
-                            <strong>Total: ₹${loan.totalAmount?.toFixed(2) || '0.00'}</strong><br>
-                            <span class="text-muted">EMI: ₹${loan.emiAmount?.toFixed(2) || '0.00'}</span><br>
-                            <span class="text-muted">Remaining: ₹${loan.remainingAmount?.toFixed(2) || '0.00'}</span>
-                        </small>
-                    </div>
-                `;
-            }
-            
-            return `
-                <tr class="${rowClass}">
-                    <td>
-                        <strong>${expense.description}</strong>
-                        ${expense.loanDetails?.loanProvider ? `<br><small class="text-muted">${expense.loanDetails.loanProvider}</small>` : ''}
-                        ${expense.notes ? `<br><small class="text-muted">${expense.notes}</small>` : ''}
-                    </td>
-                    <td>
-                        <span class="badge ${expense.type === 'business' ? 'bg-info' : 'bg-primary'}">
-                            ${expense.type === 'business' ? 'Business' : 'Personal'}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="badge bg-secondary">${getExpenseCategoryLabel(expense.category)}</span>
-                    </td>
-                    <td><strong>₹${expense.amount.toFixed(2)}</strong></td>
-                    <td>
-                        ${dueDate.toLocaleDateString('en-IN')}
-                        ${daysUntilDue <= 7 ? `<br><small class="text-muted">${daysUntilDue} days</small>` : ''}
-                    </td>
-                    <td>${statusBadge}</td>
-                    <td>
-                        <span class="badge ${expense.recurring !== 'none' ? 'bg-success' : 'bg-secondary'}">
-                            ${getRecurringLabel(expense.recurring)}
-                        </span>
-                    </td>
-                    <td>${loanDetails}</td>
-                    <td>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-success" onclick="markAsPaid('${expense.id}')" title="Mark as Paid">
-                                <i class="fas fa-check"></i>
-                            </button>
-                            <button class="btn btn-outline-warning" onclick="editExpense('${expense.id}')" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-info" onclick="viewLoanDetails('${expense.id}')" title="Loan Details">
-                                <i class="fas fa-info-circle"></i>
-                            </button>
-                            <button class="btn btn-outline-danger" onclick="deleteExpense('${expense.id}')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        return;
     }
+
+    // Use document fragment for better performance
+    const fragment = document.createDocumentFragment();
+    
+    expenses.forEach(expense => {
+        const dueDate = new Date(expense.dueDate);
+        const today = new Date();
+        const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+        
+        let statusBadge = '';
+        let rowClass = '';
+        
+        if (expense.status === 'paid') {
+            statusBadge = '<span class="badge bg-success">Paid</span>';
+        } else if (dueDate < today) {
+            statusBadge = '<span class="badge bg-danger">Overdue</span>';
+            rowClass = 'table-danger';
+        } else if (daysUntilDue <= 3) {
+            statusBadge = '<span class="badge bg-warning">Due Soon</span>';
+            rowClass = 'table-warning';
+        } else {
+            statusBadge = '<span class="badge bg-secondary">Pending</span>';
+        }
+        
+        // Loan details display - optimized
+        let loanDetails = '-';
+        if (expense.category === 'loan' && expense.loanDetails) {
+            const loan = expense.loanDetails;
+            loanDetails = `
+                <div class="loan-details">
+                    <small>
+                        <strong>Total: ₹${formatCurrency(loan.totalAmount)}</strong><br>
+                        <span class="text-muted">EMI: ₹${formatCurrency(loan.emiAmount)}</span>
+                    </small>
+                </div>
+            `;
+        }
+        
+        const row = document.createElement('tr');
+        row.className = rowClass;
+        row.innerHTML = `
+            <td>
+                <strong>${escapeHtml(expense.description)}</strong>
+                ${expense.loanDetails?.loanProvider ? `<br><small class="text-muted">${escapeHtml(expense.loanDetails.loanProvider)}</small>` : ''}
+                ${expense.notes ? `<br><small class="text-muted">${escapeHtml(expense.notes.substring(0, 50))}${expense.notes.length > 50 ? '...' : ''}</small>` : ''}
+            </td>
+            <td>
+                <span class="badge ${expense.type === 'business' ? 'bg-info' : 'bg-primary'}">
+                    ${expense.type === 'business' ? 'Business' : 'Personal'}
+                </span>
+            </td>
+            <td>
+                <span class="badge bg-secondary">${getExpenseCategoryLabel(expense.category)}</span>
+            </td>
+            <td><strong>₹${formatCurrency(expense.amount)}</strong></td>
+            <td>
+                ${dueDate.toLocaleDateString('en-IN')}
+                ${daysUntilDue <= 7 ? `<br><small class="text-muted">${daysUntilDue} days</small>` : ''}
+            </td>
+            <td>${statusBadge}</td>
+            <td>
+                <span class="badge ${expense.recurring !== 'none' ? 'bg-success' : 'bg-secondary'}">
+                    ${getRecurringLabel(expense.recurring)}
+                </span>
+            </td>
+            <td>${loanDetails}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-success" onclick="markAsPaid('${expense.id}')" title="Mark as Paid">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="editExpense('${expense.id}')" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-info" onclick="viewLoanDetails('${expense.id}')" title="Loan Details">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="deleteExpense('${expense.id}')" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        fragment.appendChild(row);
+    });
+    
+    // Single DOM update
+    tbody.innerHTML = '';
+    tbody.appendChild(fragment);
+}
+
+// Helper function to format currency
+function formatCurrency(amount) {
+    return (amount || 0).toFixed(2);
 }
 
 function getExpenseCategoryLabel(category) {
