@@ -1,15 +1,45 @@
 // Dashboard Management
 let paymentChart = null;
 let incomeChart = null;
+let dashboardInitialized = false;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize dashboard when tab is shown
-    document.getElementById('dashboard-tab').addEventListener('shown.bs.tab', function() {
-        updateDashboard();
-    });
-});
+function initializeDashboard() {
+    if (dashboardInitialized) return;
+    
+    // Check if user is authenticated
+    if (!authSystem || !authSystem.currentUser) {
+        console.log('Dashboard: User not authenticated, skipping initialization');
+        return;
+    }
+    
+    try {
+        console.log('Dashboard: Initializing...');
+        setupDashboardEventListeners();
+        dashboardInitialized = true;
+    } catch (error) {
+        console.error('Dashboard initialization failed:', error);
+    }
+}
+
+function setupDashboardEventListeners() {
+    // Refresh dashboard when tab is shown
+    const dashboardTab = document.getElementById('dashboard-tab');
+    if (dashboardTab) {
+        dashboardTab.addEventListener('shown.bs.tab', function() {
+            if (authSystem && authSystem.currentUser) {
+                updateDashboard();
+            }
+        });
+    }
+}
 
 async function updateDashboard() {
+    // Check authentication before proceeding
+    if (!authSystem || !authSystem.currentUser) {
+        console.log('Dashboard: User not authenticated, cannot load data');
+        return;
+    }
+
     try {
         // Show loading state for dashboard cards
         showCardLoading('dashboard-cards');
@@ -19,7 +49,7 @@ async function updateDashboard() {
         document.getElementById('totalCustomers').textContent = 'Loading...';
         document.getElementById('monthlyCustomers').textContent = 'Loading...';
 
-          // Show loading for charts
+        // Show loading for charts
         const paymentChartCanvas = document.getElementById('paymentChart');
         const incomeChartCanvas = document.getElementById('incomeChart');
         
@@ -30,7 +60,10 @@ async function updateDashboard() {
             incomeChartCanvas.innerHTML = '<div class="preview-loading"><div class="loading-spinner"></div><p>Loading chart...</p></div>';
         }
         
-        const snapshot = await db.collection('invoices').get();
+        // Use secureDB for authenticated queries
+        const invoicesSnapshot = await secureDB.query('invoices');
+        const customersSnapshot = await secureDB.query('customers');
+        
         let totalIncome = 0;
         let pendingAmount = 0;
         let monthlyCustomers = 0;
@@ -57,7 +90,7 @@ async function updateDashboard() {
         
         console.log('Processing invoices for dashboard:');
         
-        snapshot.forEach(doc => {
+        invoicesSnapshot.forEach(doc => {
             const invoice = doc.data();
             
             console.log('Invoice data:', {
@@ -152,20 +185,25 @@ async function updateDashboard() {
     } catch (error) {
         console.error('Error updating dashboard:', error);
         
+        // Only show error if user is authenticated and actually viewing dashboard
+        if (document.getElementById('dashboard').classList.contains('active')) {
+            showToast('Error loading dashboard data', 'error');
+        }
+        
         // Set error state
         document.getElementById('totalIncome').textContent = 'Error';
         document.getElementById('pendingAmount').textContent = 'Error';
         document.getElementById('totalCustomers').textContent = 'Error';
         document.getElementById('monthlyCustomers').textContent = 'Error';
         
-        showToast('Error loading dashboard data', 'error');
     } finally {
         hideCardLoading('dashboard-cards');
     }
 }
 
 function updatePaymentChart(paymentCounts) {
-    const ctx = document.getElementById('paymentChart').getContext('2d');
+    const ctx = document.getElementById('paymentChart');
+    if (!ctx) return;
     
     // Destroy existing chart if it exists
     if (paymentChart) {
@@ -215,7 +253,8 @@ function updatePaymentChart(paymentCounts) {
 }
 
 function updateIncomeChart(monthlyIncome, monthLabels) {
-    const ctx = document.getElementById('incomeChart').getContext('2d');
+    const ctx = document.getElementById('incomeChart');
+    if (!ctx) return;
     
     // Destroy existing chart if it exists
     if (incomeChart) {
@@ -277,3 +316,6 @@ function updateIncomeChart(monthlyIncome, monthLabels) {
         }
     });
 }
+
+// Make initializeDashboard available globally
+window.initializeDashboard = initializeDashboard;
