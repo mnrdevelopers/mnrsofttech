@@ -11,21 +11,13 @@ class AuthSystem {
     }
 
     setupEventListeners() {
-        // Login form
+        // Login form only
         const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
         
         if (loginForm) {
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleLogin();
-            });
-        }
-
-        if (registerForm) {
-            registerForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleRegister();
             });
         }
 
@@ -58,52 +50,11 @@ class AuthSystem {
             
             this.hideAuthScreen();
             showToast('Successfully signed in!', 'success');
+            
+            // Initialize app components after successful login
+            this.initializeAppComponents();
         } catch (error) {
             console.error('Login error:', error);
-            this.handleAuthError(error);
-        } finally {
-            hideLoading();
-        }
-    }
-
-    async handleRegister() {
-        const name = document.getElementById('registerName').value;
-        const email = document.getElementById('registerEmail').value;
-        const password = document.getElementById('registerPassword').value;
-        const confirmPassword = document.getElementById('registerConfirmPassword').value;
-
-        if (!name || !email || !password || !confirmPassword) {
-            showToast('Please fill in all fields', 'error');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            showToast('Passwords do not match', 'error');
-            return;
-        }
-
-        if (password.length < 6) {
-            showToast('Password must be at least 6 characters', 'error');
-            return;
-        }
-
-        try {
-            showLoading('Creating account...');
-            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-            this.currentUser = userCredential.user;
-
-            // Save user profile
-            await db.collection('users').doc(this.currentUser.uid).set({
-                name: name,
-                email: email,
-                createdAt: new Date().toISOString(),
-                lastLogin: new Date().toISOString()
-            });
-
-            this.hideAuthScreen();
-            showToast('Account created successfully!', 'success');
-        } catch (error) {
-            console.error('Registration error:', error);
             this.handleAuthError(error);
         } finally {
             hideLoading();
@@ -217,18 +168,30 @@ class AuthSystem {
                 console.log('User authenticated:', user.email);
                 
                 // Initialize app components after auth
-                setTimeout(() => {
-                    if (typeof initializeDashboard === 'function') initializeDashboard();
-                    if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
-                    if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
-                    if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
-                    if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
-                }, 1000);
+                this.initializeAppComponents();
                 
             } else {
                 this.showAuthScreen();
             }
         });
+    }
+
+    initializeAppComponents() {
+        // Initialize app components only when authenticated
+        setTimeout(() => {
+            if (typeof initializeDashboard === 'function') {
+                try {
+                    initializeDashboard();
+                } catch (error) {
+                    console.error('Dashboard initialization error:', error);
+                    // Don't show toast here as it might interfere with auth flow
+                }
+            }
+            if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
+            if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
+            if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
+            if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
+        }, 1000);
     }
 
     // Secure database operations
@@ -294,24 +257,6 @@ class AuthSystem {
 
 // Initialize authentication system
 let authSystem;
-
-// Tab switching function
-function showTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.auth-tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.auth-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Show selected tab
-    const targetTab = document.getElementById(tabName + 'Tab');
-    const targetButton = event.target;
-    
-    if (targetTab) targetTab.classList.add('active');
-    if (targetButton) targetButton.classList.add('active');
-}
 
 // Global secureDB object for other scripts to use
 const secureDB = {
