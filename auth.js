@@ -183,59 +183,56 @@ class AuthSystem {
         this.addUserInfoToHeader();
     }
 
-  addUserInfoToHeader() {
-    const header = document.querySelector('header .logo-container');
-    if (!header) return;
-    
-    // Remove existing user info
-    const existingUserInfo = header.querySelector('.user-info');
-    if (existingUserInfo) existingUserInfo.remove();
-
-    const userInfo = document.createElement('div');
-    userInfo.className = 'user-info';
-    userInfo.innerHTML = `
-        <div class="user-dropdown">
-            <button class="user-btn" onclick="toggleDropdown()">
-                <i class="fas fa-user-circle me-2"></i>
-                ${this.getUserDisplayName()}
-                <i class="fas fa-chevron-down ms-2"></i>
-            </button>
-            <div class="user-dropdown-content" id="userDropdown">
-                <button id="logoutBtn" class="logout-btn" onclick="authSystem.handleLogout()">
-                    <i class="fas fa-sign-out-alt me-2"></i>Sign Out
-                </button>
-            </div>
-        </div>
-    `;
-    
-    header.appendChild(userInfo);
-}
-
-getUserDisplayName() {
-    if (this.currentUser.email) {
-        return this.currentUser.email.split('@')[0]; // Show only username part
-    }
-    return 'User';
-}
-
-// Global function for dropdown toggle
-function toggleDropdown() {
-    const dropdown = document.getElementById('userDropdown');
-    if (dropdown) {
-        const isVisible = dropdown.style.display === 'block';
-        dropdown.style.display = isVisible ? 'none' : 'block';
-    }
-}
-
-// Close dropdown when clicking outside
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.user-dropdown')) {
-        const dropdown = document.getElementById('userDropdown');
-        if (dropdown) {
-            dropdown.style.display = 'none';
+    addUserInfoToHeader() {
+        const header = document.querySelector('header .logo-container');
+        if (!header) return;
+        
+        // Remove existing user info if any
+        const existingUserInfo = header.querySelector('.user-info');
+        if (existingUserInfo) {
+            existingUserInfo.remove();
         }
+
+        const userInfo = document.createElement('div');
+        userInfo.className = 'user-info';
+        userInfo.innerHTML = `
+            <div class="user-dropdown">
+                <button class="user-btn">
+                    <i class="fas fa-user-circle me-2"></i>
+                    <span id="userEmail">${this.currentUser.email}</span>
+                    <i class="fas fa-chevron-down ms-2"></i>
+                </button>
+                <div class="user-dropdown-content">
+                    <button id="logoutBtn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt me-2"></i>Sign Out
+                    </button>
+                </div>
+            </div>
+        `;
+        header.appendChild(userInfo);
     }
-});
+
+    checkAuthState() {
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                this.currentUser = user;
+                this.hideAuthScreen();
+                console.log('User authenticated:', user.email);
+                
+                // Initialize app components after auth
+                setTimeout(() => {
+                    if (typeof initializeDashboard === 'function') initializeDashboard();
+                    if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
+                    if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
+                    if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
+                    if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
+                }, 1000);
+                
+            } else {
+                this.showAuthScreen();
+            }
+        });
+    }
 
     // Secure database operations
     async secureDBOperation(operation, collection, data = null, docId = null) {
