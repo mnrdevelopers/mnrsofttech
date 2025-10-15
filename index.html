@@ -796,25 +796,26 @@
                 </div>
 
                 <!-- Expenses Table -->
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Description</th>
-                                <th>Type</th>
-                                <th>Category</th>
-                                <th>Amount</th>
-                                <th>Due Date</th>
-                                <th>Status</th>
-                                <th>Recurring</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expensesTableBody">
-                            <!-- Expenses will be loaded here -->
-                        </tbody>
-                    </table>
-                </div>
+               <div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Recurring</th>
+                <th>Loan Details</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="expensesTableBody">
+            <!-- Expenses will be loaded here -->
+        </tbody>
+    </table>
+</div>
 
                 <!-- Upcoming Expenses Alert -->
                 <div id="upcomingExpensesAlert" class="mt-4" style="display: none;">
@@ -996,7 +997,7 @@
         </div>
     </div>
 
-            <!-- Expense Modal -->
+           <!-- Enhanced Expense Modal -->
 <div class="modal fade" id="expenseModal" tabindex="-1" aria-labelledby="expenseModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -1035,7 +1036,7 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="expenseCategory" class="form-label">Category *</label>
-                                <select class="form-select" id="expenseCategory" required>
+                                <select class="form-select" id="expenseCategory" required onchange="toggleLoanFields()">
                                     <option value="loan">Loan/EMI</option>
                                     <option value="credit-card">Credit Card</option>
                                     <option value="utility">Utility Bill</option>
@@ -1053,6 +1054,81 @@
                                     <option value="pending">Pending</option>
                                     <option value="paid">Paid</option>
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loan/EMI Specific Fields -->
+                    <div id="loanFields" style="display: none;">
+                        <div class="card border-primary mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Loan/EMI Details</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="totalLoanAmount" class="form-label">Total Loan Amount (₹)</label>
+                                            <input type="number" class="form-control" id="totalLoanAmount" min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="loanTenure" class="form-label">Tenure (Months)</label>
+                                            <input type="number" class="form-control" id="loanTenure" min="1" max="360">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="interestRate" class="form-label">Interest Rate (% p.a.)</label>
+                                            <input type="number" class="form-control" id="interestRate" min="0" step="0.01" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="emiAmount" class="form-label">EMI Amount (₹)</label>
+                                            <input type="number" class="form-control" id="emiAmount" min="0" step="0.01" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="remainingAmount" class="form-label">Remaining Loan (₹)</label>
+                                            <input type="number" class="form-control" id="remainingAmount" min="0" step="0.01" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="loanStartDate" class="form-label">Loan Start Date</label>
+                                            <input type="date" class="form-control" id="loanStartDate">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="loanEndDate" class="form-label">Loan End Date</label>
+                                            <input type="date" class="form-control" id="loanEndDate" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="mb-3">
+                                            <label for="loanProvider" class="form-label">Loan Provider/Bank</label>
+                                            <input type="text" class="form-control" id="loanProvider" placeholder="e.g., SBI, HDFC, etc.">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="calculateEMI()">
+                                            <i class="fas fa-calculator me-1"></i> Calculate EMI
+                                        </button>
+                                        <small class="text-muted ms-2">Auto-calculates when you enter loan details</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
