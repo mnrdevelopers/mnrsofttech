@@ -360,7 +360,7 @@ async function saveExpense() {
     try {
         showLoading('Saving expense...');
         
-        const expenseId = document.getElementById('expenseId').value;
+        let expenseId = document.getElementById('expenseId').value; // FIX: Changed from const to let
         const isEditing = !!expenseId;
         
         const expenseToSave = {
@@ -374,7 +374,7 @@ async function saveExpense() {
             await db.collection('expenses').doc(expenseId).update(expenseToSave);
         } else {
             const newDocRef = await db.collection('expenses').add(expenseToSave);
-            expenseId = newDocRef.id;
+            expenseId = newDocRef.id; // This was causing the error with const
         }
         
         // Close modal
