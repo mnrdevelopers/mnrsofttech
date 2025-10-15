@@ -183,56 +183,70 @@ class AuthSystem {
         this.addUserInfoToHeader();
     }
 
-    addUserInfoToHeader() {
-        const header = document.querySelector('header .logo-container');
-        if (!header) return;
-        
-        // Remove existing user info if any
-        const existingUserInfo = header.querySelector('.user-info');
-        if (existingUserInfo) {
-            existingUserInfo.remove();
-        }
-
-        const userInfo = document.createElement('div');
-        userInfo.className = 'user-info';
-        userInfo.innerHTML = `
-            <div class="user-dropdown">
-                <button class="user-btn">
-                    <i class="fas fa-user-circle me-2"></i>
-                    <span id="userEmail">${this.currentUser.email}</span>
-                    <i class="fas fa-chevron-down ms-2"></i>
-                </button>
-                <div class="user-dropdown-content">
-                    <button id="logoutBtn" class="logout-btn">
-                        <i class="fas fa-sign-out-alt me-2"></i>Sign Out
-                    </button>
-                </div>
-            </div>
-        `;
-        header.appendChild(userInfo);
+   addUserInfoToHeader() {
+    const header = document.querySelector('header .logo-container');
+    if (!header) {
+        console.error('Header container not found');
+        return;
+    }
+    
+    // Remove existing user info if any
+    const existingUserInfo = header.querySelector('.user-info');
+    if (existingUserInfo) {
+        existingUserInfo.remove();
     }
 
-    checkAuthState() {
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                this.currentUser = user;
-                this.hideAuthScreen();
-                console.log('User authenticated:', user.email);
-                
-                // Initialize app components after auth
-                setTimeout(() => {
-                    if (typeof initializeDashboard === 'function') initializeDashboard();
-                    if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
-                    if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
-                    if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
-                    if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
-                }, 1000);
-                
-            } else {
-                this.showAuthScreen();
-            }
+    // Create user info dropdown
+    const userInfo = document.createElement('div');
+    userInfo.className = 'user-info';
+    userInfo.innerHTML = `
+        <div class="user-dropdown">
+            <button class="user-btn" id="userDropdownBtn">
+                <i class="fas fa-user-circle me-2"></i>
+                <span id="userEmail">${this.currentUser.email}</span>
+                <i class="fas fa-chevron-down ms-2"></i>
+            </button>
+            <div class="user-dropdown-content" id="userDropdownMenu">
+                <div class="dropdown-header p-3 border-bottom">
+                    <small class="text-muted">Signed in as</small>
+                    <div class="fw-bold">${this.currentUser.email}</div>
+                </div>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>Sign Out
+                </button>
+            </div>
+        </div>
+    `;
+    
+    header.appendChild(userInfo);
+    
+    // Add click event listener for mobile devices
+    this.setupDropdownInteractions();
+}
+
+setupDropdownInteractions() {
+    const dropdownBtn = document.getElementById('userDropdownBtn');
+    const dropdownMenu = document.getElementById('userDropdownMenu');
+    
+    if (dropdownBtn && dropdownMenu) {
+        // Toggle dropdown on click (for mobile)
+        dropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = dropdownMenu.style.display === 'block';
+            dropdownMenu.style.display = isVisible ? 'none' : 'block';
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', () => {
+            dropdownMenu.style.display = 'none';
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        dropdownMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
         });
     }
+}
 
     // Secure database operations
     async secureDBOperation(operation, collection, data = null, docId = null) {
