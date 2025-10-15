@@ -885,46 +885,48 @@
         </div>
     </div>
 
-    <!-- ========== SCRIPTS ========== -->
+  <!-- ========== SCRIPTS ========== -->
 
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- External Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-    <!-- Application Scripts (Load in Correct Order) -->
-    <script src="firebase-config.js"></script> <!-- Must load first -->
-    <script src="script.js"></script>          <!-- Core functionality -->
-    <script src="invoices.js"></script>        <!-- Invoice management -->
-    <script src="dashboard.js"></script>       <!-- Dashboard charts -->
-    <script src="customers.js"></script>       <!-- Customer management -->
-    <script src="bulk-payments.js"></script>   <!-- Bulk payment processing -->
-    <script src="consolidation.js"></script>   <!-- Monthly consolidation -->
-    <script src="pwa.js"></script>             <!-- PWA functionality -->
+<!-- Application Scripts (Load in Correct Order) -->
+<script src="firebase-config.js"></script>           <!-- Enhanced with auth -->
+<script src="auth.js"></script>                      <!-- NEW: Authentication system -->
+<script src="session-manager.js"></script>           <!-- NEW: Session management -->
+<script src="script.js"></script>                    <!-- Core functionality -->
+<script src="invoices.js"></script>                  <!-- Invoice management -->
+<script src="dashboard.js"></script>                 <!-- Dashboard charts -->
+<script src="customers.js"></script>                 <!-- Customer management -->
+<script src="bulk-payments.js"></script>             <!-- Bulk payment processing -->
+<script src="consolidation.js"></script>             <!-- Monthly consolidation -->
+<script src="pwa.js"></script>                       <!-- PWA functionality -->
 
-    <!-- Initialize PWA Loading -->
-    <script>
-        // Hide PWA loading screen when app is ready
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                const loadingScreen = document.getElementById('pwaLoading');
-                if (loadingScreen) {
-                    loadingScreen.style.opacity = '0';
-                    setTimeout(() => {
-                        if (loadingScreen.parentNode) {
-                            loadingScreen.remove();
-                        }
-                    }, 500);
-                }
-            }, 1000);
-        });
+<!-- Initialize PWA Loading -->
+<script>
+    // Hide PWA loading screen when app is ready
+    window.addEventListener('load', function() {
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('pwaLoading');
+            if (loadingScreen) {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    if (loadingScreen.parentNode) {
+                        loadingScreen.remove();
+                    }
+                }, 500);
+            }
+        }, 1000);
+    });
 
-        // Set current year in footer
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
-    </script>
+    // Set current year in footer
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+</script>
 </body>
 </html>
