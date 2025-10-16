@@ -4,6 +4,8 @@ class PWAHelper {
         this.deferredPrompt = null;
         this.isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                            window.navigator.standalone === true;
+        this.updateAvailable = false;
+        this.registration = null;
         
         this.init();
     }
@@ -13,28 +15,68 @@ class PWAHelper {
         this.addInstallPrompt();
         this.detectStandaloneMode();
         this.addOnlineOfflineListeners();
+        this.checkForUpdates();
     }
     
-    // Register Service Worker
+    // Register Service Worker with update handling
     async registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
-                const registration = await navigator.serviceWorker.register('/sw.js');
-                console.log('Service Worker registered successfully:', registration);
+                this.registration = await navigator.serviceWorker.register('/sw.js');
+                console.log('Service Worker registered successfully:', this.registration);
                 
-                // Check for updates
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    console.log('New service worker found:', newWorker);
-                    
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            this.showUpdateNotification();
-                        }
-                    });
-                });
+                this.setupUpdateHandling();
+                
             } catch (error) {
                 console.error('Service Worker registration failed:', error);
+            }
+        }
+    }
+    
+    // Setup update handling
+    setupUpdateHandling() {
+        // Listen for claiming of control
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            console.log('Controller changed, reloading page...');
+            this.showUpdateNotification('App updated successfully! Reloading...', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        });
+        
+        // Listen for waiting service worker
+        if (this.registration.waiting) {
+            this.updateAvailable = true;
+            this.showUpdatePrompt();
+        }
+        
+        // Track installing service worker
+        this.registration.addEventListener('updatefound', () => {
+            const newWorker = this.registration.installing;
+            console.log('New service worker found:', newWorker);
+            
+            newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    this.updateAvailable = true;
+                    this.showUpdatePrompt();
+                }
+            });
+        });
+        
+        // Periodically check for updates
+        setInterval(() => {
+            this.checkForUpdates();
+        }, 60 * 60 * 1000); // Check every hour
+    }
+    
+    // Check for updates
+    async checkForUpdates() {
+        if (this.registration) {
+            try {
+                await this.registration.update();
+                console.log('Checked for updates');
+            } catch (error) {
+                console.error('Update check failed:', error);
             }
         }
     }
@@ -94,6 +136,90 @@ class PWAHelper {
         }
     }
     
+    // Show update prompt
+    showUpdatePrompt() {
+        // Remove existing prompts
+        this.hideUpdatePrompt();
+        
+        const updateHTML = `
+            <div class="install-prompt" id="updatePrompt">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-sync-alt fa-2x text-warning me-3"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Update Available</h6>
+                        <p class="mb-0 text-muted">New version is ready to install</p>
+                    </div>
+                    <button class="btn btn-warning btn-sm me-2" onclick="pwaHelper.updateApp()">
+                        Update Now
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="pwaHelper.hideUpdatePrompt()">
+                        Later
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', updateHTML);
+        
+        // Also show a toast notification
+        this.showUpdateNotification('New update available!', 'info');
+    }
+    
+    // Hide update prompt
+    hideUpdatePrompt() {
+        const prompt = document.getElementById('updatePrompt');
+        if (prompt) {
+            prompt.remove();
+        }
+    }
+    
+    // Update app
+    async updateApp() {
+        if (this.registration && this.registration.waiting) {
+            // Send skip waiting message to service worker
+            this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            
+            this.showUpdateNotification('Updating app...', 'info');
+            
+            // Reload page when new service worker takes control
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                window.location.reload();
+            });
+        }
+    }
+    
+    // Show update notification
+    showUpdateNotification(message, type = 'info') {
+        if (typeof showToast === 'function') {
+            showToast(message, type);
+        } else {
+            console.log('Update notification:', message);
+            // Fallback notification
+            this.fallbackNotification(message, type);
+        }
+    }
+    
+    // Fallback notification
+    fallbackNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info'} position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'warning' ? 'exclamation-triangle' : 'info'}-circle me-2"></i>
+                <span>${message}</span>
+                <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+            </div>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+    
     // Install app
     async installApp() {
         if (this.deferredPrompt) {
@@ -123,13 +249,14 @@ class PWAHelper {
     addOnlineOfflineListeners() {
         window.addEventListener('online', () => {
             console.log('App is online');
-            showToast('Connection restored', 'success');
+            this.showUpdateNotification('Connection restored', 'success');
             this.syncOfflineData();
+            this.checkForUpdates(); // Check for updates when coming online
         });
         
         window.addEventListener('offline', () => {
             console.log('App is offline');
-            showToast('You are currently offline', 'warning');
+            this.showUpdateNotification('You are currently offline', 'warning');
         });
     }
     
@@ -139,50 +266,15 @@ class PWAHelper {
         console.log('Syncing offline data...');
     }
     
-    // Show update notification
-    showUpdateNotification() {
-        const updateHTML = `
-            <div class="install-prompt" id="updatePrompt">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-sync-alt fa-2x text-warning me-3"></i>
-                    <div class="flex-grow-1">
-                        <h6 class="mb-1">Update Available</h6>
-                        <p class="mb-0 text-muted">New version is ready</p>
-                    </div>
-                    <button class="btn btn-warning btn-sm me-2" onclick="pwaHelper.updateApp()">
-                        Update
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="pwaHelper.hideUpdatePrompt()">
-                        Later
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', updateHTML);
+    // Check if update is available
+    isUpdateAvailable() {
+        return this.updateAvailable;
     }
     
-    // Hide update prompt
-    hideUpdatePrompt() {
-        const prompt = document.getElementById('updatePrompt');
-        if (prompt) {
-            prompt.remove();
-        }
-    }
-    
-    // Update app
-    updateApp() {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
-                window.location.reload();
-            });
-        }
-    }
-    
-    // Check if app is installed
-    isAppInstalled() {
-        return this.isStandalone || this.deferredPrompt === null;
+    // Force check for updates (can be called from UI)
+    async forceUpdateCheck() {
+        this.showUpdateNotification('Checking for updates...', 'info');
+        await this.checkForUpdates();
     }
     
     // Share functionality
@@ -200,14 +292,12 @@ class PWAHelper {
             }
         } else {
             console.log('Web Share API not supported');
-            // Fallback: copy to clipboard or show share options
             this.fallbackShare(invoiceData);
         }
     }
     
     // Fallback share method
     fallbackShare(invoiceData) {
-        // Implement fallback sharing options
         showToast('Share feature not supported on this device', 'info');
     }
 }
@@ -217,3 +307,23 @@ const pwaHelper = new PWAHelper();
 
 // Export for global access
 window.pwaHelper = pwaHelper;
+
+// Add update check button to your UI (optional)
+function addUpdateButtonToUI() {
+    const updateButton = document.createElement('button');
+    updateButton.className = 'btn btn-outline-info btn-sm ms-2';
+    updateButton.innerHTML = '<i class="fas fa-sync-alt"></i> Check for Updates';
+    updateButton.onclick = () => pwaHelper.forceUpdateCheck();
+    
+    // Add to header or somewhere in your UI
+    const header = document.querySelector('header .logo-container');
+    if (header) {
+        header.appendChild(updateButton);
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Add update button after a delay
+    setTimeout(addUpdateButtonToUI, 3000);
+});
