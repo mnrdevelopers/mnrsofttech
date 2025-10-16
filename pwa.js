@@ -312,7 +312,7 @@ window.pwaHelper = pwaHelper;
 function addUpdateButtonToUI() {
     const updateButton = document.createElement('button');
     updateButton.className = 'btn btn-outline-info btn-sm ms-2';
-    updateButton.innerHTML = '<i class="fas fa-sync-alt"></i> Check for Updates';
+    updateButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
     updateButton.onclick = () => pwaHelper.forceUpdateCheck();
     
     // Add to header or somewhere in your UI
