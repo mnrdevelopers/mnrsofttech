@@ -1,5 +1,5 @@
 // Service Worker for MNR SoftTech Invoice PWA
-const CACHE_NAME = 'mnr-invoice-v1.0.0';
+const CACHE_NAME = 'mnr-invoice-v1.0.1'; // Update version
 const urlsToCache = [
   '/',
   '/index.html',
@@ -22,13 +22,14 @@ const urlsToCache = [
 // Install event - cache essential files
 self.addEventListener('install', (event) => {
   console.log('Service Worker installing...');
+  self.skipWaiting(); // Activate immediately
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -45,7 +46,10 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      // Take control of all clients immediately
+      return self.clients.claim();
+    })
   );
 });
 
@@ -60,15 +64,35 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request)
       .then((response) => {
         // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
-      .catch(() => {
-        // If both fail, show offline page
-        if (event.request.destination === 'document') {
-          return caches.match('/offline.html');
+        if (response) {
+          return response;
         }
+        
+        return fetch(event.request).then(response => {
+          // Check if we received a valid response
+          if(!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+
+          // Clone the response
+          const responseToCache = response.clone();
+
+          caches.open(CACHE_NAME)
+            .then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+
+          return response;
+        });
       })
   );
+});
+
+// Listen for messages from the client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Background sync for offline data
