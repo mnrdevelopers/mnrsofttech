@@ -48,57 +48,67 @@
         <p>Loading...</p>
     </div>
 
-    <!-- Header -->
-    <!-- Header -->
+  <!-- Header -->
 <header>
-    <div class="logo-container">
-        <div class="logo-content">
-            <div class="logo-icon">
-                <i class="fas fa-laptop-code"></i>
+    <div class="container">
+        <div class="header-content">
+            <!-- Logo Section -->
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <i class="fas fa-laptop-code"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>MNR SOFTTECH SOLUTIONS</h1>
+                    <p>Computer Software & Hardware Services</p>
+                </div>
             </div>
-            <div class="logo-text">
-                <h1>MNR SOFTTECH SOLUTIONS</h1>
-                <p>Computer Software & Hardware Services</p>
+
+            <!-- Navigation Tabs -->
+            <nav class="header-nav">
+                <ul class="nav nav-tabs" id="headerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#generate" type="button">
+                            <i class="fas fa-file-invoice me-1"></i>Generate
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#invoices" type="button">
+                            <i class="fas fa-list me-1"></i>Invoices
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#dashboard" type="button">
+                            <i class="fas fa-chart-bar me-1"></i>Dashboard
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#customers" type="button">
+                            <i class="fas fa-users me-1"></i>Customers
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#consolidate" type="button">
+                            <i class="fas fa-file-contract me-1"></i>Consolidate
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#expenses" type="button">
+                            <i class="fas fa-money-bill-wave me-1"></i>Expenses
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- User Info Section -->
+            <div class="user-section">
+                <div class="user-info">
+                    <span class="user-email">mnrdeveloper11@gmail.com</span>
+                    <button class="btn btn-outline-light btn-sm logout-btn">
+                        <i class="fas fa-sign-out-alt me-1"></i>Sign Out
+                    </button>
+                </div>
             </div>
         </div>
-        
-        <!-- Navigation Tabs in Header -->
-        <nav class="header-nav">
-            <ul class="nav nav-tabs" id="headerTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="header-generate-tab" data-bs-toggle="tab" data-bs-target="#generate" type="button" role="tab" aria-controls="generate" aria-selected="true">
-                        <i class="fas fa-file-invoice me-2"></i>Generate
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="header-invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab" aria-controls="invoices" aria-selected="false">
-                        <i class="fas fa-list me-2"></i>Invoices
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="header-dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="false">
-                        <i class="fas fa-chart-bar me-2"></i>Dashboard
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="header-customers-tab" data-bs-toggle="tab" data-bs-target="#customers" type="button" role="tab" aria-controls="customers" aria-selected="false">
-                        <i class="fas fa-users me-2"></i>Customers
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="header-consolidate-tab" data-bs-toggle="tab" data-bs-target="#consolidate" type="button" role="tab" aria-controls="consolidate" aria-selected="false">
-                        <i class="fas fa-file-contract me-2"></i>Consolidate
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="header-expenses-tab" data-bs-toggle="tab" data-bs-target="#expenses" type="button" role="tab" aria-controls="expenses" aria-selected="false">
-                        <i class="fas fa-money-bill-wave me-2"></i>Expenses
-                    </button>
-                </li>
-            </ul>
-        </nav>
-
-        <!-- Logout button will be added here dynamically -->
     </div>
 </header>
     
