@@ -120,6 +120,7 @@ main {
     border: none;
     border-bottom: 3px solid var(--primary-color); /* Thicker indicator */
     border-radius: 0;
+    font-weight: 500; /* Lighter weight for a modern look (Was 600) */
 }
 
 /* Form Container / Card Refinement */
@@ -199,11 +200,12 @@ main {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #3a7bd5 100%);
+    background: var(--primary-color); /* Flat color for a cleaner look */
     color: white;
 }
 
 .btn-primary:hover {
+    background: #3a7bd5; /* Slightly lighter shade on hover */
     transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(44, 90, 160, 0.4);
 }
