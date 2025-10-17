@@ -1,5 +1,40 @@
 let currentEditingInvoiceId = null;
 
+// Sync header tabs with main tabs
+document.addEventListener('DOMContentLoaded', function() {
+    // When a header tab is clicked, also activate the corresponding main tab
+    const headerTabs = document.querySelectorAll('#headerTabs .nav-link');
+    const mainTabs = document.querySelectorAll('#mainTabsContent .tab-pane');
+    
+    headerTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const target = this.getAttribute('data-bs-target');
+            // Also update the main tab content visibility
+            mainTabs.forEach(pane => {
+                if (pane.id === target.substring(1)) {
+                    pane.classList.add('show', 'active');
+                } else {
+                    pane.classList.remove('show', 'active');
+                }
+            });
+        });
+    });
+    
+    // When main tabs are activated via other means, update header tabs
+    const tabTriggers = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabTriggers.forEach(trigger => {
+        trigger.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-bs-target');
+            const headerTab = document.querySelector(`#headerTabs [data-bs-target="${targetId}"]`);
+            if (headerTab) {
+                // Update header tabs
+                headerTabs.forEach(tab => tab.classList.remove('active'));
+                headerTab.classList.add('active');
+            }
+        });
+    });
+});
+
 async function generateInvoiceNumber() {
     try {
         // Get all invoices to find the highest number
