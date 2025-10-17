@@ -1,40 +1,60 @@
 let currentEditingInvoiceId = null;
 
-// Sync header tabs with main tabs
+// Sync header tabs functionality
 document.addEventListener('DOMContentLoaded', function() {
-    // When a header tab is clicked, also activate the corresponding main tab
-    const headerTabs = document.querySelectorAll('#headerTabs .nav-link');
-    const mainTabs = document.querySelectorAll('#mainTabsContent .tab-pane');
-    
-    headerTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const target = this.getAttribute('data-bs-target');
-            // Also update the main tab content visibility
-            mainTabs.forEach(pane => {
-                if (pane.id === target.substring(1)) {
-                    pane.classList.add('show', 'active');
-                } else {
-                    pane.classList.remove('show', 'active');
-                }
-            });
-        });
-    });
-    
-    // When main tabs are activated via other means, update header tabs
-    const tabTriggers = document.querySelectorAll('[data-bs-toggle="tab"]');
-    tabTriggers.forEach(trigger => {
-        trigger.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-bs-target');
-            const headerTab = document.querySelector(`#headerTabs [data-bs-target="${targetId}"]`);
-            if (headerTab) {
-                // Update header tabs
-                headerTabs.forEach(tab => tab.classList.remove('active'));
-                headerTab.classList.add('active');
-            }
-        });
-    });
+    // Initialize tab synchronization
+    syncHeaderTabs();
 });
 
+function syncHeaderTabs() {
+    const headerTabs = document.querySelectorAll('#headerTabs .nav-link');
+    const mainTabPanes = document.querySelectorAll('#mainTabsContent .tab-pane');
+    
+    // Add click event listeners to header tabs
+    headerTabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active class from all tabs
+            headerTabs.forEach(t => t.classList.remove('active'));
+            mainTabPanes.forEach(pane => pane.classList.remove('show', 'active'));
+            
+            // Add active class to clicked tab
+            this.classList.add('active');
+            
+            // Show corresponding tab pane
+            const targetId = this.getAttribute('data-bs-target');
+            const targetPane = document.querySelector(targetId);
+            if (targetPane) {
+                targetPane.classList.add('show', 'active');
+            }
+            
+            // Update URL hash for deep linking
+            const tabName = targetId.substring(1);
+            window.location.hash = tabName;
+        });
+    });
+    
+    // Handle browser back/forward navigation
+    window.addEventListener('hashchange', function() {
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+            const targetTab = document.querySelector(`#headerTabs [data-bs-target="#${hash}"]`);
+            if (targetTab) {
+                targetTab.click();
+            }
+        }
+    });
+    
+    // Set initial tab based on URL hash
+    const initialHash = window.location.hash.substring(1);
+    if (initialHash) {
+        const initialTab = document.querySelector(`#headerTabs [data-bs-target="#${initialHash}"]`);
+        if (initialTab) {
+            initialTab.click();
+        }
+    }
+}
 async function generateInvoiceNumber() {
     try {
         // Get all invoices to find the highest number
