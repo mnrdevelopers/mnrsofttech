@@ -1995,3 +1995,81 @@ function updateProgress(progress, message = null) {
         loadingText.textContent = message;
     }
 }
+
+// Enhanced mobile nav scrolling
+function enhanceMobileNav() {
+    const headerNav = document.querySelector('.header-nav');
+    const navTabs = document.querySelector('.header-nav .nav-tabs');
+    
+    if (!headerNav || !navTabs) return;
+    
+    // Check if content is scrollable
+    function checkScrollable() {
+        if (navTabs.scrollWidth > navTabs.clientWidth) {
+            headerNav.classList.add('scrollable');
+            // Add scroll hint for first-time users
+            if (!localStorage.getItem('navScrollHintShown')) {
+                headerNav.classList.add('scroll-hint');
+                setTimeout(() => {
+                    headerNav.classList.remove('scroll-hint');
+                }, 3000);
+                localStorage.setItem('navScrollHintShown', 'true');
+            }
+        } else {
+            headerNav.classList.remove('scrollable');
+        }
+    }
+    
+    // Initial check
+    checkScrollable();
+    
+    // Check on resize
+    window.addEventListener('resize', checkScrollable);
+    
+    // Smooth scroll to active tab on mobile
+    const activeTab = document.querySelector('.header-nav .nav-link.active');
+    if (activeTab && window.innerWidth <= 768) {
+        setTimeout(() => {
+            activeTab.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+        }, 300);
+    }
+    
+    // Add touch scrolling improvements
+    let startX;
+    let scrollLeft;
+    let isDown = false;
+    
+    navTabs.addEventListener('touchstart', (e) => {
+        isDown = true;
+        startX = e.touches[0].pageX - navTabs.offsetLeft;
+        scrollLeft = navTabs.scrollLeft;
+        navTabs.style.scrollBehavior = 'auto'; // Disable smooth scroll during drag
+    });
+    
+    navTabs.addEventListener('touchmove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.touches[0].pageX - navTabs.offsetLeft;
+        const walk = (x - startX) * 2; // Scroll speed
+        navTabs.scrollLeft = scrollLeft - walk;
+    });
+    
+    navTabs.addEventListener('touchend', () => {
+        isDown = false;
+        navTabs.style.scrollBehavior = 'smooth'; // Re-enable smooth scroll
+    });
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    enhanceMobileNav();
+});
+
+// Also initialize when tabs are shown (in case of dynamic content)
+document.addEventListener('shown.bs.tab', function() {
+    setTimeout(enhanceMobileNav, 100);
+});
