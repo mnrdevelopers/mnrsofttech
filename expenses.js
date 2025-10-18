@@ -875,45 +875,89 @@ async function deleteExpense(expenseId) {
 }
 
 function filterExpenses() {
+    console.log('Filtering expenses...');
+    
     const searchTerm = document.getElementById('searchExpenses')?.value.toLowerCase() || '';
     const typeFilter = document.getElementById('filterExpenseType')?.value || '';
     const categoryFilter = document.getElementById('filterExpenseCategory')?.value || '';
     const statusFilter = document.getElementById('filterExpenseStatus')?.value || '';
     
+    console.log('Filters:', { searchTerm, typeFilter, categoryFilter, statusFilter });
+    
     const tbody = document.getElementById('expensesTableBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('Expenses table body not found!');
+        return;
+    }
     
     const rows = tbody.querySelectorAll('tr');
+    console.log(`Found ${rows.length} rows to filter`);
     
-    rows.forEach(row => {
-        // Skip the "no expenses" row
-        if (row.cells.length < 2) {
+    let visibleCount = 0;
+    
+    rows.forEach((row, index) => {
+        // Skip rows that don't have the expected cell structure (like the "no expenses" row)
+        if (row.cells.length < 6) {
+            console.log(`Skipping row ${index} - insufficient cells`);
             row.style.display = 'none';
             return;
         }
         
-        const description = row.cells[0].textContent.toLowerCase();
-        const type = row.cells[1].textContent.toLowerCase();
-        const category = row.cells[2].textContent.toLowerCase();
-        const status = row.cells[5].textContent.toLowerCase();
-        
-        const matchesSearch = !searchTerm || 
-                            description.includes(searchTerm);
-        
-        const matchesType = !typeFilter || 
-                          (typeFilter === 'business' && type.includes('business')) ||
-                          (typeFilter === 'personal' && type.includes('personal'));
-        
-        const matchesCategory = !categoryFilter || 
-                              category.includes(categoryFilter.toLowerCase());
-        
-        const matchesStatus = !statusFilter || 
-                            (statusFilter === 'pending' && (status.includes('pending') || status.includes('due soon'))) ||
-                            (statusFilter === 'paid' && status.includes('paid')) ||
-                            (statusFilter === 'overdue' && status.includes('overdue'));
-        
-        row.style.display = matchesSearch && matchesType && matchesCategory && matchesStatus ? '' : 'none';
+        try {
+            const description = row.cells[0].textContent.toLowerCase();
+            const type = row.cells[1].textContent.toLowerCase();
+            const category = row.cells[2].textContent.toLowerCase();
+            const status = row.cells[5].textContent.toLowerCase();
+            
+            console.log(`Row ${index}:`, { description, type, category, status });
+            
+            const matchesSearch = !searchTerm || description.includes(searchTerm);
+            const matchesType = !typeFilter || type.includes(typeFilter);
+            const matchesCategory = !categoryFilter || category.includes(categoryFilter.toLowerCase());
+            const matchesStatus = !statusFilter || status.includes(statusFilter);
+            
+            const shouldShow = matchesSearch && matchesType && matchesCategory && matchesStatus;
+            
+            row.style.display = shouldShow ? '' : 'none';
+            
+            if (shouldShow) {
+                visibleCount++;
+            }
+            
+            console.log(`Row ${index} - Show: ${shouldShow}`);
+            
+        } catch (error) {
+            console.error(`Error filtering row ${index}:`, error);
+            row.style.display = 'none';
+        }
     });
+    
+    console.log(`Filter complete. ${visibleCount} rows visible`);
+    
+    // If no rows are visible, show a message
+    if (visibleCount === 0 && rows.length > 0 && rows[0].cells.length >= 6) {
+        const firstRow = rows[0];
+        if (!firstRow.querySelector('.no-expenses-message')) {
+            const noResultsRow = document.createElement('tr');
+            noResultsRow.className = 'no-expenses-message';
+            noResultsRow.innerHTML = `
+                <td colspan="9" class="text-center py-4">
+                    <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">No expenses match your filters</p>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearExpenseFilters()">
+                        Clear Filters
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(noResultsRow);
+        }
+    } else {
+        // Remove the no results message if it exists
+        const noResultsMessage = tbody.querySelector('.no-expenses-message');
+        if (noResultsMessage) {
+            noResultsMessage.remove();
+        }
+    }
 }
 
 // Auto-check for upcoming expenses every day
