@@ -2612,3 +2612,41 @@ img {
         padding: 0.6rem 1rem;
     }
 }
+
+/* Expense Filter Styles */
+#searchExpenses, #filterExpenseType, #filterExpenseCategory, #filterExpenseStatus {
+    transition: all 0.3s ease;
+}
+
+#searchExpenses:focus, #filterExpenseType:focus, #filterExpenseCategory:focus, #filterExpenseStatus:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Expense table responsive styles */
+@media (max-width: 768px) {
+    #expensesTableBody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    
+    #expensesTableBody td {
+        display: block;
+        text-align: right;
+        padding: 0.5rem;
+        border: none;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    #expensesTableBody td::before {
+        content: attr(data-label);
+        float: left;
+        font-weight: bold;
+    }
+    
+    #expensesTableBody tr:last-child td:last-child {
+        border-bottom: none;
+    }
+}
