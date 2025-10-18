@@ -59,16 +59,10 @@ function setupExpenseEventListeners() {
     if (filterExpenseStatus) filterExpenseStatus.addEventListener('change', filterExpenses);
 
     // Clear expense filters
-    const clearExpenseFilters = document.getElementById('clearExpenseFilters');
-    if (clearExpenseFilters) {
-        clearExpenseFilters.addEventListener('click', function() {
-            document.getElementById('searchExpenses').value = '';
-            document.getElementById('filterExpenseType').value = '';
-            document.getElementById('filterExpenseCategory').value = '';
-            document.getElementById('filterExpenseStatus').value = '';
-            filterExpenses();
-        });
-    }
+const clearExpenseFilters = document.getElementById('clearExpenseFilters');
+if (clearExpenseFilters) {
+    clearExpenseFilters.addEventListener('click', clearExpenseFilters);
+}
 
     // Alert settings toggle
     const expenseAlert = document.getElementById('expenseAlert');
@@ -883,61 +877,48 @@ function filterExpenses() {
     const statusFilter = document.getElementById('filterExpenseStatus')?.value || '';
     
     console.log('Filters:', { searchTerm, typeFilter, categoryFilter, statusFilter });
+    console.log('Current expenses:', currentExpenses.length);
     
-    const tbody = document.getElementById('expensesTableBody');
-    if (!tbody) {
-        console.error('Expenses table body not found!');
-        return;
-    }
-    
-    const rows = tbody.querySelectorAll('tr');
-    console.log(`Found ${rows.length} rows to filter`);
-    
-    let visibleCount = 0;
-    
-    rows.forEach((row, index) => {
-        // Skip rows that don't have the expected cell structure (like the "no expenses" row)
-        if (row.cells.length < 6) {
-            console.log(`Skipping row ${index} - insufficient cells`);
-            row.style.display = 'none';
-            return;
+    // Filter the currentExpenses array
+    const filteredExpenses = currentExpenses.filter(expense => {
+        const description = expense.description?.toLowerCase() || '';
+        const type = expense.type?.toLowerCase() || '';
+        const category = expense.category?.toLowerCase() || '';
+        const status = expense.status?.toLowerCase() || '';
+        
+        // Convert status to match filter values
+        let statusForFilter = status;
+        if (status === 'pending') {
+            const dueDate = new Date(expense.dueDate);
+            const today = new Date();
+            if (dueDate < today) {
+                statusForFilter = 'overdue';
+            }
         }
         
-        try {
-            const description = row.cells[0].textContent.toLowerCase();
-            const type = row.cells[1].textContent.toLowerCase();
-            const category = row.cells[2].textContent.toLowerCase();
-            const status = row.cells[5].textContent.toLowerCase();
-            
-            console.log(`Row ${index}:`, { description, type, category, status });
-            
-            const matchesSearch = !searchTerm || description.includes(searchTerm);
-            const matchesType = !typeFilter || type.includes(typeFilter);
-            const matchesCategory = !categoryFilter || category.includes(categoryFilter.toLowerCase());
-            const matchesStatus = !statusFilter || status.includes(statusFilter);
-            
-            const shouldShow = matchesSearch && matchesType && matchesCategory && matchesStatus;
-            
-            row.style.display = shouldShow ? '' : 'none';
-            
-            if (shouldShow) {
-                visibleCount++;
-            }
-            
-            console.log(`Row ${index} - Show: ${shouldShow}`);
-            
-        } catch (error) {
-            console.error(`Error filtering row ${index}:`, error);
-            row.style.display = 'none';
-        }
+        const matchesSearch = !searchTerm || 
+                            description.includes(searchTerm) ||
+                            (expense.notes && expense.notes.toLowerCase().includes(searchTerm)) ||
+                            (expense.loanDetails?.loanProvider && expense.loanDetails.loanProvider.toLowerCase().includes(searchTerm));
+        
+        const matchesType = !typeFilter || type.includes(typeFilter);
+        const matchesCategory = !categoryFilter || category.includes(categoryFilter.toLowerCase());
+        const matchesStatus = !statusFilter || statusForFilter.includes(statusFilter);
+        
+        return matchesSearch && matchesType && matchesCategory && matchesStatus;
     });
     
-    console.log(`Filter complete. ${visibleCount} rows visible`);
+    console.log(`Filtered to ${filteredExpenses.length} expenses`);
     
-    // If no rows are visible, show a message
-    if (visibleCount === 0 && rows.length > 0 && rows[0].cells.length >= 6) {
-        const firstRow = rows[0];
-        if (!firstRow.querySelector('.no-expenses-message')) {
+    // Display the filtered expenses
+    displayExpenses(filteredExpenses);
+    
+    // Show/hide no results message
+    const tbody = document.getElementById('expensesTableBody');
+    const noResultsMessage = tbody.querySelector('.no-expenses-message');
+    
+    if (filteredExpenses.length === 0 && currentExpenses.length > 0) {
+        if (!noResultsMessage) {
             const noResultsRow = document.createElement('tr');
             noResultsRow.className = 'no-expenses-message';
             noResultsRow.innerHTML = `
@@ -953,7 +934,6 @@ function filterExpenses() {
         }
     } else {
         // Remove the no results message if it exists
-        const noResultsMessage = tbody.querySelector('.no-expenses-message');
         if (noResultsMessage) {
             noResultsMessage.remove();
         }
@@ -971,4 +951,22 @@ setInterval(() => {
 function forceReloadExpenses() {
     console.log('Force reloading expenses...');
     loadExpenses();
+}
+
+// Clear expense filters - update this function
+function clearExpenseFilters() {
+    document.getElementById('searchExpenses').value = '';
+    document.getElementById('filterExpenseType').value = '';
+    document.getElementById('filterExpenseCategory').value = '';
+    document.getElementById('filterExpenseStatus').value = '';
+    
+    // Reset to show all expenses
+    displayExpenses(currentExpenses);
+    
+    // Remove any no results message
+    const tbody = document.getElementById('expensesTableBody');
+    const noResultsMessage = tbody.querySelector('.no-expenses-message');
+    if (noResultsMessage) {
+        noResultsMessage.remove();
+    }
 }
