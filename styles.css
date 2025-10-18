@@ -2650,3 +2650,55 @@ img {
         border-bottom: none;
     }
 }
+
+/* Icon-only buttons for very small screens */
+@media (max-width: 380px) {
+    .compact-buttons {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .compact-buttons .btn-sm .btn-text {
+        display: none;
+    }
+    
+    .compact-buttons .btn-sm {
+        min-width: 50px;
+        justify-content: center;
+    }
+    
+    .compact-buttons .btn-sm i {
+        margin-right: 0;
+        font-size: 0.8rem;
+    }
+}
+
+/* Tooltip styles for icon-only buttons */
+.btn-sm {
+    position: relative;
+}
+
+.btn-sm:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+/* Adjust form container for compact buttons */
+.form-container {
+    position: relative;
+}
+
+.compact-buttons {
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+    margin-top: 1.5rem;
+}
