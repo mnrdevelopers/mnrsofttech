@@ -2702,3 +2702,129 @@ img {
     padding-top: 1rem;
     margin-top: 1.5rem;
 }
+
+/* Enhanced Mobile Navigation with Scrollbar */
+@media (max-width: 768px) {
+    .header-nav {
+        position: relative;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin; /* Firefox */
+        scrollbar-color: rgba(255, 255, 255, 0.5) rgba(255, 255, 255, 0.1); /* Firefox */
+    }
+    
+    .header-nav::-webkit-scrollbar {
+        height: 6px; /* Height for horizontal scrollbar */
+    }
+    
+    .header-nav::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        margin: 0 10px;
+    }
+    
+    .header-nav::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 3px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .header-nav::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.7);
+    }
+    
+    /* Ensure nav tabs are properly scrollable */
+    .header-nav .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 8px; /* Space for scrollbar */
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Hide default scrollbar for custom one */
+    }
+    
+    .header-nav .nav-tabs::-webkit-scrollbar {
+        display: none; /* Hide default scrollbar */
+    }
+    
+    /* Add visual indicator for scrollable content */
+    .header-nav::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 20px;
+        background: linear-gradient(90deg, transparent, rgba(44, 90, 160, 0.3));
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .header-nav.scrollable::after {
+        opacity: 1;
+    }
+    
+    /* Improve touch targets */
+    .header-nav .nav-tabs .nav-link {
+        padding: 0.8rem 1rem;
+        min-height: 44px; /* Better touch target */
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    
+    /* Add some margin between tabs */
+    .header-nav .nav-tabs .nav-link {
+        margin: 0 2px;
+    }
+}
+
+/* Enhanced scrollbar for larger mobile devices */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .header-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .header-nav::-webkit-scrollbar {
+        height: 4px;
+    }
+}
+
+/* Additional mobile optimizations */
+@media (max-width: 768px) {
+    /* Ensure header doesn't overflow */
+    header {
+        overflow: hidden;
+    }
+    
+    /* Improve logo container spacing */
+    .logo-container {
+        padding: 0.8rem 1rem;
+    }
+    
+    /* Make sure user info doesn't interfere */
+    .user-info {
+        margin-top: 0.5rem;
+    }
+}
+
+/* Scroll indicator animation */
+@keyframes pulse-scroll {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.7; }
+    100% { opacity: 0.3; }
+}
+
+.header-nav.scroll-hint::after {
+    animation: pulse-scroll 2s infinite;
+}
+
+/* Active tab highlight */
+.header-nav .nav-tabs .nav-link.active {
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
