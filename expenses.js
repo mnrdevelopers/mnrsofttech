@@ -208,20 +208,20 @@ function displayExpenses(expenses) {
         return;
     }
     
-    if (expenses.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9" class="text-center py-4">
-                    <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
-                    <p class="text-muted">No expenses found</p>
-                    <button class="btn btn-primary mt-2" onclick="showAddExpenseModal()">
-                        <i class="fas fa-plus me-2"></i>Add Your First Expense
-                    </button>
-                </td>
-            </tr>
-        `;
-        return;
-    }
+   if (expenses.length === 0) {
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="9" class="text-center py-4">
+                <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No expenses found</p>
+                <button class="btn btn-primary mt-2" onclick="showAddExpenseModal()">
+                    <i class="fas fa-plus me-2"></i>Add Your First Expense
+                </button>
+            </td>
+        </tr>
+    `;
+    return;
+}
 
     // Use document fragment for better performance
     const fragment = document.createDocumentFragment();
@@ -886,19 +886,33 @@ function filterExpenses() {
     const rows = tbody.querySelectorAll('tr');
     
     rows.forEach(row => {
-        if (row.querySelector('td')) {
-            const description = row.cells[0].textContent.toLowerCase();
-            const type = row.cells[1].textContent.toLowerCase();
-            const category = row.cells[2].textContent.toLowerCase();
-            const status = row.cells[5].textContent.toLowerCase();
-            
-            const matchesSearch = !searchTerm || description.includes(searchTerm);
-            const matchesType = !typeFilter || type.includes(typeFilter);
-            const matchesCategory = !categoryFilter || category.includes(categoryFilter.toLowerCase());
-            const matchesStatus = !statusFilter || status.includes(statusFilter);
-            
-            row.style.display = matchesSearch && matchesType && matchesCategory && matchesStatus ? '' : 'none';
+        // Skip the "no expenses" row
+        if (row.cells.length < 2) {
+            row.style.display = 'none';
+            return;
         }
+        
+        const description = row.cells[0].textContent.toLowerCase();
+        const type = row.cells[1].textContent.toLowerCase();
+        const category = row.cells[2].textContent.toLowerCase();
+        const status = row.cells[5].textContent.toLowerCase();
+        
+        const matchesSearch = !searchTerm || 
+                            description.includes(searchTerm);
+        
+        const matchesType = !typeFilter || 
+                          (typeFilter === 'business' && type.includes('business')) ||
+                          (typeFilter === 'personal' && type.includes('personal'));
+        
+        const matchesCategory = !categoryFilter || 
+                              category.includes(categoryFilter.toLowerCase());
+        
+        const matchesStatus = !statusFilter || 
+                            (statusFilter === 'pending' && (status.includes('pending') || status.includes('due soon'))) ||
+                            (statusFilter === 'paid' && status.includes('paid')) ||
+                            (statusFilter === 'overdue' && status.includes('overdue'));
+        
+        row.style.display = matchesSearch && matchesType && matchesCategory && matchesStatus ? '' : 'none';
     });
 }
 
