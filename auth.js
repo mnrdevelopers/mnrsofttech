@@ -176,25 +176,32 @@ class AuthSystem {
         });
     }
 
-   initializeAppComponents() {
+initializeAppComponents() {
     // Initialize app components only when authenticated
     setTimeout(() => {
         console.log('Initializing app components for authenticated user');
         
-        if (typeof initializeDashboard === 'function') {
-            console.log('Calling initializeDashboard...');
-            initializeDashboard();
+        // Check if user is authenticated before initializing
+        if (this.currentUser) {
+            console.log('User authenticated, initializing components...');
+            
+            if (typeof initializeDashboard === 'function') {
+                console.log('Calling initializeDashboard...');
+                initializeDashboard();
+            } else {
+                console.error('initializeDashboard function not found');
+            }
+            
+            if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
+            if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
+            if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
+            if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
         } else {
-            console.error('initializeDashboard function not found');
+            console.log('No authenticated user, skipping component initialization');
         }
-        
-        if (typeof setupInvoicesTab === 'function') setupInvoicesTab();
-        if (typeof initializeConsolidationTab === 'function') initializeConsolidationTab();
-        if (typeof initializeBulkPayments === 'function') initializeBulkPayments();
-        if (typeof initializeCustomersTab === 'function') initializeCustomersTab();
     }, 1000);
 }
-
+    
     // Secure database operations
     async secureDBOperation(operation, collection, data = null, docId = null) {
         if (!this.currentUser) {
