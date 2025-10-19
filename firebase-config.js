@@ -23,9 +23,10 @@ try {
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Firestore settings
+// Firestore settings with better error handling
 db.settings({
-    ignoreUndefinedProperties: true
+    ignoreUndefinedProperties: true,
+    merge: true
 });
 
 // Enable offline persistence (optional)
