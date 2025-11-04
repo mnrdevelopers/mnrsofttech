@@ -1,5 +1,3 @@
-[file name]: dashboard.js
-[file content begin]
 // Dashboard Management
 let paymentChart = null;
 let incomeChart = null;
@@ -417,4 +415,3 @@ function updateIncomeChart(monthlyIncome, monthLabels) {
         }
     });
 }
-[file content end]
