@@ -1,13 +1,105 @@
+[file name]: dashboard.js
+[file content begin]
 // Dashboard Management
 let paymentChart = null;
 let incomeChart = null;
+let currentFilter = 'all'; // 'all', 'month', 'quarter', 'year', 'custom'
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize dashboard when tab is shown
     document.getElementById('dashboard-tab').addEventListener('shown.bs.tab', function() {
-        updateDashboard();
+        initializeDashboard();
     });
 });
+
+function initializeDashboard() {
+    // Set default date for custom filter
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    document.getElementById('customStartDate').valueAsDate = firstDay;
+    document.getElementById('customEndDate').valueAsDate = today;
+    
+    // Add event listeners for filters
+    document.getElementById('timeFilter').addEventListener('change', function() {
+        currentFilter = this.value;
+        toggleCustomDateFilter();
+        updateDashboard();
+    });
+    
+    document.getElementById('applyCustomFilter').addEventListener('click', function() {
+        if (validateCustomDates()) {
+            updateDashboard();
+        }
+    });
+    
+    document.getElementById('resetFilter').addEventListener('click', function() {
+        document.getElementById('timeFilter').value = 'all';
+        currentFilter = 'all';
+        toggleCustomDateFilter();
+        updateDashboard();
+    });
+    
+    // Initial dashboard update
+    updateDashboard();
+}
+
+function toggleCustomDateFilter() {
+    const customDateFilter = document.getElementById('customDateFilter');
+    if (currentFilter === 'custom') {
+        customDateFilter.style.display = 'block';
+    } else {
+        customDateFilter.style.display = 'none';
+    }
+}
+
+function validateCustomDates() {
+    const startDate = new Date(document.getElementById('customStartDate').value);
+    const endDate = new Date(document.getElementById('customEndDate').value);
+    
+    if (startDate > endDate) {
+        showToast('Start date cannot be after end date', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+function getDateRange() {
+    const now = new Date();
+    let startDate, endDate;
+    
+    switch(currentFilter) {
+        case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            break;
+        case 'quarter':
+            const quarter = Math.floor(now.getMonth() / 3);
+            startDate = new Date(now.getFullYear(), quarter * 3, 1);
+            endDate = new Date(now.getFullYear(), (quarter + 1) * 3, 0);
+            break;
+        case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            endDate = new Date(now.getFullYear(), 11, 31);
+            break;
+        case 'custom':
+            startDate = new Date(document.getElementById('customStartDate').value);
+            endDate = new Date(document.getElementById('customEndDate').value);
+            break;
+        default: // 'all'
+            startDate = null;
+            endDate = null;
+    }
+    
+    return { startDate, endDate };
+}
+
+function isDateInRange(invoiceDate, startDate, endDate) {
+    if (!startDate || !endDate) return true;
+    
+    return invoiceDate >= startDate && invoiceDate <= endDate;
+}
 
 async function updateDashboard() {
     try {
@@ -19,7 +111,7 @@ async function updateDashboard() {
         document.getElementById('totalCustomers').textContent = 'Loading...';
         document.getElementById('monthlyCustomers').textContent = 'Loading...';
 
-          // Show loading for charts
+        // Show loading for charts
         const paymentChartCanvas = document.getElementById('paymentChart');
         const incomeChartCanvas = document.getElementById('incomeChart');
         
@@ -35,6 +127,7 @@ async function updateDashboard() {
         let pendingAmount = 0;
         let monthlyCustomers = 0;
         const customers = new Set();
+        const monthlyCustomersSet = new Set();
         
         // Payment status counts
         const paymentCounts = {
@@ -42,6 +135,9 @@ async function updateDashboard() {
             unpaid: 0,
             partial: 0
         };
+        
+        // Get date range based on filter
+        const { startDate, endDate } = getDateRange();
         
         // Monthly income data (last 6 months)
         const monthlyIncome = Array(6).fill(0);
@@ -55,18 +151,43 @@ async function updateDashboard() {
             monthLabels.push(date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }));
         }
         
-        console.log('Processing invoices for dashboard:');
+        console.log('Processing invoices for dashboard with filter:', currentFilter);
+        console.log('Date range:', { startDate, endDate });
         
         snapshot.forEach(doc => {
             const invoice = doc.data();
             
-            console.log('Invoice data:', {
+            // Parse invoice date
+            let invoiceDate;
+            try {
+                if (invoice.invoiceDate) {
+                    if (typeof invoice.invoiceDate === 'string') {
+                        invoiceDate = new Date(invoice.invoiceDate);
+                    } else if (invoice.invoiceDate.toDate) {
+                        invoiceDate = invoice.invoiceDate.toDate();
+                    } else {
+                        invoiceDate = new Date(invoice.createdAt || new Date());
+                    }
+                } else {
+                    invoiceDate = new Date(invoice.createdAt || new Date());
+                }
+            } catch (error) {
+                console.warn('Error parsing invoice date:', error);
+                invoiceDate = new Date(invoice.createdAt || new Date());
+            }
+            
+            // Check if invoice is within date range
+            if (!isDateInRange(invoiceDate, startDate, endDate)) {
+                return; // Skip this invoice
+            }
+            
+            console.log('Processing invoice:', {
                 id: doc.id,
                 customer: invoice.customerName,
                 status: invoice.paymentStatus,
                 amountPaid: invoice.amountPaid,
                 grandTotal: invoice.grandTotal,
-                items: invoice.items?.length || 0
+                date: invoiceDate
             });
             
             // Count unique customers
@@ -94,24 +215,11 @@ async function updateDashboard() {
             
             // Count monthly billing customers
             if (invoice.paymentType === 'monthly') {
-                monthlyCustomers++;
+                monthlyCustomersSet.add(invoice.customerName);
             }
             
             // Calculate monthly income for chart (last 6 months)
             try {
-                let invoiceDate;
-                if (invoice.invoiceDate) {
-                    if (typeof invoice.invoiceDate === 'string') {
-                        invoiceDate = new Date(invoice.invoiceDate);
-                    } else if (invoice.invoiceDate.toDate) {
-                        invoiceDate = invoice.invoiceDate.toDate();
-                    } else {
-                        invoiceDate = new Date(invoice.createdAt || new Date());
-                    }
-                } else {
-                    invoiceDate = new Date(invoice.createdAt || new Date());
-                }
-                
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
                 const invoiceMonth = invoiceDate.getMonth();
@@ -130,6 +238,8 @@ async function updateDashboard() {
             }
         });
         
+        monthlyCustomers = monthlyCustomersSet.size;
+        
         console.log('Final Dashboard Calculations:', {
             totalIncome,
             pendingAmount,
@@ -144,6 +254,9 @@ async function updateDashboard() {
         document.getElementById('pendingAmount').textContent = `₹${pendingAmount.toFixed(2)}`;
         document.getElementById('totalCustomers').textContent = customers.size;
         document.getElementById('monthlyCustomers').textContent = monthlyCustomers;
+        
+        // Update filter display
+        updateFilterDisplay();
         
         // Update charts
         updatePaymentChart(paymentCounts);
@@ -162,6 +275,33 @@ async function updateDashboard() {
     } finally {
         hideCardLoading('dashboard-cards');
     }
+}
+
+function updateFilterDisplay() {
+    const filterDisplay = document.getElementById('filterDisplay');
+    const { startDate, endDate } = getDateRange();
+    
+    let displayText = '';
+    
+    switch(currentFilter) {
+        case 'month':
+            displayText = `Showing data for ${startDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}`;
+            break;
+        case 'quarter':
+            const quarter = Math.floor(startDate.getMonth() / 3) + 1;
+            displayText = `Showing data for Q${quarter} ${startDate.getFullYear()}`;
+            break;
+        case 'year':
+            displayText = `Showing data for ${startDate.getFullYear()}`;
+            break;
+        case 'custom':
+            displayText = `Showing data from ${startDate.toLocaleDateString('en-IN')} to ${endDate.toLocaleDateString('en-IN')}`;
+            break;
+        default:
+            displayText = 'Showing all data';
+    }
+    
+    filterDisplay.textContent = displayText;
 }
 
 function updatePaymentChart(paymentCounts) {
@@ -277,3 +417,4 @@ function updateIncomeChart(monthlyIncome, monthLabels) {
         }
     });
 }
+[file content end]
