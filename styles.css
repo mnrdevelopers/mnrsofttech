@@ -2933,3 +2933,72 @@ img {
         margin-right: 0;
     }
 }
+
+/* Add these styles to your existing CSS */
+
+/* Dashboard Filter Styles */
+#filterDisplay {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+#customDateFilter {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Dashboard Card Enhancements */
+.dashboard-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 4px solid #007bff;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.card-income {
+    border-left-color: #28a745 !important;
+}
+
+.card-pending {
+    border-left-color: #ffc107 !important;
+}
+
+.card-customers {
+    border-left-color: #007bff !important;
+}
+
+.card-monthly {
+    border-left-color: #6f42c1 !important;
+}
+
+/* Loading states */
+.preview-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 250px;
+    color: #6c757d;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
