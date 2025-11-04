@@ -2,14 +2,18 @@
   "name": "MNR SoftTech Invoice Manager",
   "short_name": "MNRInvoBill",
   "description": "Professional invoice management system for MNR SoftTech Solutions",
-  "start_url": "https://mnrinvobill.netlify.app/",
+  "start_url": "https://mnrdevelopers.github.io/mnrsofttech/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#667eea",
   "orientation": "portrait-primary",
-  "scope": "https://mnrinvobill.netlify.app/",
+  "scope": "https://mnrdevelopers.github.io/mnrsofttech/",
   "lang": "en",
-  "categories": ["business", "productivity", "finance"],
+  "categories": [
+    "business",
+    "productivity",
+    "finance"
+  ],
   "icons": [
     {
       "src": "mnricon.png",
