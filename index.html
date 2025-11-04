@@ -1195,102 +1195,14 @@
 <!-- External Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-<!-- Firebase SDK Imports (Using ES Module format) -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js";
-    import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js";
-    
-    // Global variables (will be accessed by other scripts via the window object)
-    let firebaseApp;
-    window.db = null;
-    window.auth = null;
-    window.firebase = {
-        initializeApp: initializeApp,
-        firestore: getFirestore,
-        auth: getAuth
-    };
-    
-    // Check for global config variables
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-    
-    // Use the provided firebase-config.js or fall back to the dynamic config
-    const customConfig = {
-      apiKey: "AIzaSyCsgmsgUpMgb5Pw8xA_R3i9ybt6iEpNQ64",
-      authDomain: "mnr-soft-tech-invoice.firebaseapp.com",
-      projectId: "mnr-soft-tech-invoice",
-      storageBucket: "mnr-soft-tech-invoice.firebasestorage.app",
-      messagingSenderId: "846761019349",
-      appId: "1:846761019349:web:98adfefb8ac2b44f115f5c",
-      measurementId: "G-HTGPVDVPCR"
-    };
-
-    let finalConfig = customConfig;
-    if (firebaseConfigString) {
-        try {
-            finalConfig = JSON.parse(firebaseConfigString);
-        } catch (e) {
-            console.error("Error parsing firebaseConfigString:", e);
-        }
-    }
-    
-    // Initialize Firebase App
-    try {
-        firebaseApp = initializeApp(finalConfig);
-        console.log("Firebase app initialized with provided config.");
-
-        // Initialize services
-        window.db = getFirestore(firebaseApp);
-        window.auth = getAuth(firebaseApp);
-        
-        // Firestore settings (as previously defined in firebase-config.js)
-        if (window.db.settings) {
-            window.db.settings({
-                ignoreUndefinedProperties: true
-            });
-            // Enable persistence (optional)
-            window.db.enablePersistence().catch((err) => {
-                console.log("Persistence failed:", err);
-            });
-        }
-        
-        // --- Authentication Logic (Crucial for Canvas Integration) ---
-        (async () => {
-            const authInstance = window.auth;
-
-            if (initialAuthToken) {
-                // Use the custom token for authentication
-                await signInWithCustomToken(authInstance, initialAuthToken)
-                    .then(userCredential => {
-                        console.log("Signed in with custom token:", userCredential.user.uid);
-                    })
-                    .catch(error => {
-                        console.error("Error signing in with custom token:", error);
-                        // Fallback to anonymous sign-in if custom token fails
-                        signInAnonymously(authInstance).then(() => console.log("Signed in anonymously as fallback.")).catch(e => console.error("Anon sign-in failed:", e));
-                    });
-            } else {
-                // Fallback to anonymous sign-in if no token is available
-                await signInAnonymously(authInstance).then(() => console.log("Signed in anonymously.")).catch(e => console.error("Anon sign-in failed:", e));
-            }
-
-            // After initialization, if auth.js is properly structured, it will pick up the state change
-            // and hide the auth screen if a user is successfully signed in (even anonymously).
-        })();
-
-    } catch (error) {
-        console.error("Firebase initialization error:", error);
-    }
-</script>
-
 <!-- Application Scripts (Load in Correct Order) -->
-<!-- The local firebase-config.js is no longer needed since the module script handles initialization -->
-<!-- <script src="firebase-config.js"></script> -->
+<script src="firebase-config.js"></script>           <!-- Enhanced with auth -->
 <script src="auth.js"></script>                      <!-- NEW: Authentication system -->
 <script src="session-manager.js"></script>           <!-- NEW: Session management -->
 <script src="script.js"></script>                    <!-- Core functionality -->
