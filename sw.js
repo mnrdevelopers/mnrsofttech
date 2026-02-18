@@ -1,5 +1,5 @@
 // Service Worker for MNR SoftTech Invoice PWA
-const CACHE_NAME = 'mnr-invoice-v1.0.6'; // Update version
+const CACHE_NAME = 'mnr-invoice-v1.0.7'; // Update version
 const urlsToCache = [
   '/',
   '/index.html',
